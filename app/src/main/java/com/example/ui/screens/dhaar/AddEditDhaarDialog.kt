@@ -1,6 +1,7 @@
 package com.example.ui.screens.dhaar
 
 import android.app.DatePickerDialog
+import android.content.Intent
 import android.net.Uri
 import android.provider.ContactsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -92,42 +93,40 @@ fun AddEditDhaarDialog(
 
     // Contact Picker from Phone Contacts
     val phoneContactPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickContact()
-    ) { contactUri: Uri? ->
-        if (contactUri != null) {
-            val cursor = context.contentResolver.query(contactUri, null, null, null, null)
-            cursor?.use {
-                if (it.moveToFirst()) {
-                    val nameIndex = it.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME)
-                    val idIndex = it.getColumnIndex(ContactsContract.Contacts._ID)
-                    val contactName = if (nameIndex != -1) it.getString(nameIndex) else "Phone Contact"
-                    val contactSysId = if (idIndex != -1) it.getString(idIndex) else ""
-
-                    // Fetch phone number if available
-                    var contactPhone: String? = null
-                    val phoneCursor = context.contentResolver.query(
-                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                        null,
-                        "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
-                        arrayOf(contactSysId),
-                        null
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null) {
+            val contactUri = result.data?.data
+            if (contactUri != null) {
+                try {
+                    val projection = arrayOf(
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                        ContactsContract.CommonDataKinds.Phone.NUMBER,
+                        ContactsContract.CommonDataKinds.Phone.PHOTO_URI
                     )
-                    phoneCursor?.use { pCur ->
-                        if (pCur.moveToFirst()) {
-                            val phoneIdx = pCur.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                            if (phoneIdx != -1) contactPhone = pCur.getString(phoneIdx)
-                        }
-                    }
+                    context.contentResolver.query(contactUri, projection, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val nameIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                            val numberIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                            val photoIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI)
 
-                    // Check if already in list or insert
-                    val existing = allContacts.find { c -> c.name.equals(contactName, ignoreCase = true) }
-                    if (existing != null) {
-                        selectedContactId = existing.id
-                    } else {
-                        viewModel.addContact(Contact(name = contactName, phoneNumber = contactPhone)) { newId ->
-                            selectedContactId = newId
+                            val contactName = if (nameIdx >= 0) cursor.getString(nameIdx) ?: "Phone Contact" else "Phone Contact"
+                            val contactPhone = if (numberIdx >= 0) cursor.getString(numberIdx) else null
+                            val contactPhoto = if (photoIdx >= 0) cursor.getString(photoIdx) else null
+
+                            // Check if already in list or insert
+                            val existing = allContacts.find { c -> c.name.equals(contactName, ignoreCase = true) }
+                            if (existing != null) {
+                                selectedContactId = existing.id
+                            } else {
+                                viewModel.addContact(Contact(name = contactName, phoneNumber = contactPhone, photoUri = contactPhoto)) { newId ->
+                                    selectedContactId = newId
+                                }
+                            }
                         }
                     }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
         }
@@ -308,9 +307,10 @@ fun AddEditDhaarDialog(
                     OutlinedButton(
                         onClick = {
                             try {
-                                phoneContactPickerLauncher.launch(null)
+                                val pickIntent = Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
+                                phoneContactPickerLauncher.launch(pickIntent)
                             } catch (e: Exception) {
-                                // Fallback silently
+                                e.printStackTrace()
                             }
                         },
                         shape = RoundedCornerShape(8.dp),

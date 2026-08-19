@@ -77,33 +77,79 @@ fun TransactionsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.setSearchQuery(it) },
-                    placeholder = { Text("Search note, merchant, tag...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    text = "Search note, merchant, tag...",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = searchQuery,
+                                onValueChange = { viewModel.setSearchQuery(it) },
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            IconButton(
+                                onClick = { viewModel.setSearchQuery("") },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Clear",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
                             }
                         }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.weight(1f)
-                )
+                    }
+                }
 
                 FilledTonalIconButton(
                     onClick = { showFilterSheet = true },
                     shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.size(54.dp)
+                    modifier = Modifier.size(44.dp)
                 ) {
-                    Icon(Icons.Default.FilterList, contentDescription = "Filters")
+                    Icon(
+                        imageVector = Icons.Default.FilterList,
+                        contentDescription = "Filters",
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 

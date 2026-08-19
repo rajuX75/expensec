@@ -43,6 +43,7 @@ fun SettingsScreen(
     // Profile
     val displayName by viewModel.displayName.collectAsState()
     val avatarColorHex by viewModel.avatarColorHex.collectAsState()
+    val profilePictureUri by viewModel.profilePictureUri.collectAsState()
     val googleEmail by viewModel.googleAccountEmail.collectAsState()
     val firebaseUser by viewModel.firebaseUser.collectAsState()
 
@@ -118,19 +119,30 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Avatar
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(avatarColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        androidx.compose.material3.Text(
-                            text = avatarInitial,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                    if (!profilePictureUri.isNullOrBlank()) {
+                        coil.compose.AsyncImage(
+                            model = profilePictureUri,
+                            contentDescription = "Profile Avatar",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(avatarColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.Text(
+                                text = avatarInitial,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
                     }
                     Spacer(Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -175,21 +187,6 @@ fun SettingsScreen(
         }
         item {
             com.example.ui.components.FirebaseSyncCard(
-                viewModel = viewModel,
-                onShowMessage = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
-            )
-        }
-
-        // ── Google Drive Backup ───────────────────────────────────
-        item {
-            Text(
-                text = "Google Drive Backup",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        item {
-            com.example.ui.components.CloudBackupSection(
                 viewModel = viewModel,
                 onShowMessage = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
             )

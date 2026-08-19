@@ -66,6 +66,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     // Profile Preferences
     val displayName = userPrefs.displayName
     val avatarColorHex = userPrefs.avatarColorHex
+    val profilePictureUri = userPrefs.profilePictureUri
 
     // Notification Preferences
     val dueRemindersEnabled = userPrefs.dueRemindersEnabled
@@ -1021,6 +1022,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     fun setAvatarColorHex(hex: String) {
         userPrefs.setAvatarColorHex(hex)
+    }
+
+    fun setProfilePictureUri(uri: String?) {
+        userPrefs.setProfilePictureUri(uri)
     }
 
     // Notification settings

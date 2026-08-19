@@ -86,17 +86,28 @@ fun ContactDetailScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = contact.name.take(1).uppercase(),
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                        if (!contact.photoUri.isNullOrBlank()) {
+                            coil.compose.AsyncImage(
+                                model = contact.photoUri,
+                                contentDescription = contact.name,
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                            )
+                        } else {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = contact.name.take(1).uppercase(),
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
                             }
                         }
                         Spacer(modifier = Modifier.width(10.dp))

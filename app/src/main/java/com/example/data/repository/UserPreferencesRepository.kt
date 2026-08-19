@@ -115,6 +115,11 @@ class UserPreferencesRepository(context: Context) {
     )
     val avatarColorHex: StateFlow<String> = _avatarColorHex.asStateFlow()
 
+    private val _profilePictureUri = MutableStateFlow<String?>(
+        prefs.getString("profile_picture_uri", null)
+    )
+    val profilePictureUri: StateFlow<String?> = _profilePictureUri.asStateFlow()
+
     // Notification Preferences
     private val _dueRemindersEnabled = MutableStateFlow(
         prefs.getBoolean("due_reminders_enabled", true)
@@ -279,6 +284,11 @@ class UserPreferencesRepository(context: Context) {
     fun setAvatarColorHex(hex: String) {
         prefs.edit().putString("avatar_color_hex", hex).apply()
         _avatarColorHex.value = hex
+    }
+
+    fun setProfilePictureUri(uri: String?) {
+        prefs.edit().putString("profile_picture_uri", uri).apply()
+        _profilePictureUri.value = uri
     }
 
     // --- Notification setters ---

@@ -38,6 +38,7 @@ fun ProfileScreen(
 ) {
     val displayName by viewModel.displayName.collectAsState()
     val avatarColorHex by viewModel.avatarColorHex.collectAsState()
+    val profilePictureUri by viewModel.profilePictureUri.collectAsState()
     val googleEmail by viewModel.googleAccountEmail.collectAsState()
     val firebaseUser by viewModel.firebaseUser.collectAsState()
     val allTransactions by viewModel.allTransactions.collectAsState()
@@ -48,6 +49,13 @@ fun ProfileScreen(
 
     var showEditNameDialog by remember { mutableStateOf(false) }
     var showColorPickerDialog by remember { mutableStateOf(false) }
+
+    // Image Picker Launcher for Profile Picture
+    val photoPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        uri?.let { viewModel.setProfilePictureUri(it.toString()) }
+    }
 
     val email = firebaseUser?.email ?: googleEmail ?: ""
     val avatarInitial = when {
@@ -96,37 +104,83 @@ fun ProfileScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // Avatar with edit overlay
+                        // Avatar with photo or initials + camera upload button
                         Box(contentAlignment = Alignment.BottomEnd) {
-                            Box(
-                                modifier = Modifier
-                                    .size(96.dp)
-                                    .clip(CircleShape)
-                                    .background(avatarColor)
-                                    .clickable { showColorPickerDialog = true },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = avatarInitial,
-                                    fontSize = 40.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                            if (!profilePictureUri.isNullOrBlank()) {
+                                coil.compose.AsyncImage(
+                                    model = profilePictureUri,
+                                    contentDescription = "Profile Picture",
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(CircleShape)
+                                        .clickable { photoPickerLauncher.launch("image/*") }
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(CircleShape)
+                                        .background(avatarColor)
+                                        .clickable { photoPickerLauncher.launch("image/*") },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = avatarInitial,
+                                        fontSize = 42.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
                             }
+
+                            // Camera / Upload badge button
                             Box(
                                 modifier = Modifier
-                                    .size(28.dp)
+                                    .size(32.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primary)
-                                    .clickable { showColorPickerDialog = true },
+                                    .clickable { photoPickerLauncher.launch("image/*") },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    Icons.Default.Palette,
-                                    contentDescription = "Change color",
+                                    Icons.Default.PhotoCamera,
+                                    contentDescription = "Upload profile photo",
                                     tint = Color.White,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
+                            }
+                        }
+
+                        // Photo options row (Upload / Change / Remove / Color)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(
+                                onClick = { photoPickerLauncher.launch("image/*") }
+                            ) {
+                                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(if (profilePictureUri.isNullOrBlank()) "Upload Photo" else "Change Photo", fontSize = 12.sp)
+                            }
+
+                            if (!profilePictureUri.isNullOrBlank()) {
+                                TextButton(
+                                    onClick = { viewModel.setProfilePictureUri(null) }
+                                ) {
+                                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Remove", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                                }
+                            } else {
+                                TextButton(
+                                    onClick = { showColorPickerDialog = true }
+                                ) {
+                                    Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Avatar Color", fontSize = 12.sp)
+                                }
                             }
                         }
 

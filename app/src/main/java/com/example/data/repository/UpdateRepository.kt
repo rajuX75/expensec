@@ -1,15 +1,12 @@
 package com.example.data.repository
 
 import android.app.DownloadManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import androidx.core.content.FileProvider
-import com.example.BuildConfig
 import com.example.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -19,7 +16,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -70,57 +66,40 @@ class UpdateRepository(
         val currentCode = getCurrentVersionCode()
         return listOf(
             VersionReleaseLog(
-                versionName = "v1.1.0",
-                versionCode = 2,
-                releaseDate = "August 2026",
-                title = "In-App Updates, Enhanced Sync & UI Polish",
-                isCurrent = currentCode >= 2,
-                changes = listOf(
-                    ChangelogItem(ChangelogType.FEATURE, "In-App Update checker with seamless skippable prompts and release logs"),
-                    ChangelogItem(ChangelogType.FEATURE, "Dedicated 'App Updates & What's New' section in Settings"),
-                    ChangelogItem(ChangelogType.FEATURE, "Changelog and release notes viewer with category badges"),
-                    ChangelogItem(ChangelogType.IMPROVEMENT, "Real-time download progress tracking with direct APK installer"),
-                    ChangelogItem(ChangelogType.IMPROVEMENT, "Optimized database backup and Firestore sync reliability"),
-                    ChangelogItem(ChangelogType.FIX, "Fixed minor layout shifts in Settings navigation")
-                )
-            ),
-            VersionReleaseLog(
                 versionName = "v1.0.0",
                 versionCode = 1,
                 releaseDate = "August 2026",
                 title = "Initial Official Release",
-                isCurrent = currentCode == 1,
+                isCurrent = true,
                 changes = listOf(
-                    ChangelogItem(ChangelogType.FEATURE, "Complete local-first expense and income tracker with Material 3 UI"),
-                    ChangelogItem(ChangelogType.FEATURE, "Dhaar (Debts & Loans) tracker with contact management and settle-up ledger"),
-                    ChangelogItem(ChangelogType.FEATURE, "Interactive financial charts, analytics, and spending breakdown"),
-                    ChangelogItem(ChangelogType.FEATURE, "Monthly budget tracker with alert thresholds and progress indicators"),
-                    ChangelogItem(ChangelogType.FEATURE, "Multi-currency support (USD, EUR, GBP, INR, BDT, etc.)"),
-                    ChangelogItem(ChangelogType.FEATURE, "PIN Lock protection for sensitive financial data"),
-                    ChangelogItem(ChangelogType.FEATURE, "Google Drive cloud backup and Firestore real-time synchronization"),
-                    ChangelogItem(ChangelogType.FEATURE, "Full JSON and CSV export/import capabilities")
+                    ChangelogItem(ChangelogType.FEATURE, "Clean, local-first financial manager with 0-balance start"),
+                    ChangelogItem(ChangelogType.FEATURE, "Dhaar (Debts & Loans) tracker with contact photo avatars & phone picker"),
+                    ChangelogItem(ChangelogType.FEATURE, "User profile picture upload and custom contact photos"),
+                    ChangelogItem(ChangelogType.FEATURE, "Real-time Firebase Firestore database synchronization"),
+                    ChangelogItem(ChangelogType.FEATURE, "In-App Update checker with skippable prompts and automatic APK download"),
+                    ChangelogItem(ChangelogType.IMPROVEMENT, "Sleek, compact search bar and refined Material 3 UI"),
+                    ChangelogItem(ChangelogType.FIX, "Fixed phone contact selection crash with safe permission-free picker")
                 )
             )
         )
     }
 
     /**
-     * Checks for available updates.
+     * Checks for available updates from GitHub Releases API for rajuX75/expensec.
      * @param isManualCheck When true, ignores the user's skipped version preference so they can still manually see updates.
      */
     suspend fun checkForUpdates(isManualCheck: Boolean = false): UpdateCheckState = withContext(Dispatchers.IO) {
         _updateCheckState.value = UpdateCheckState.Checking
 
         try {
-            // Small simulated delay for smooth UI feedback during manual check
             if (isManualCheck) {
                 delay(600)
             }
 
             userPrefs.setLastUpdateCheckTime()
 
-            // You can query a remote GitHub Releases API or custom endpoint if configured
             val currentCode = getCurrentVersionCode()
+            val currentName = getCurrentVersionName()
             val skippedCode = userPrefs.skippedUpdateVersion.value
 
             val updateInfo = fetchRemoteUpdateInfo()
@@ -128,33 +107,32 @@ class UpdateRepository(
             val state = if (updateInfo != null && updateInfo.versionCode > currentCode) {
                 if (!isManualCheck && updateInfo.versionCode == skippedCode) {
                     // User opted to skip this version on auto-check
-                    UpdateCheckState.UpToDate(getCurrentVersionName(), System.currentTimeMillis())
+                    UpdateCheckState.UpToDate(currentName, System.currentTimeMillis())
                 } else {
                     UpdateCheckState.UpdateAvailable(updateInfo)
                 }
             } else {
-                UpdateCheckState.UpToDate(getCurrentVersionName(), System.currentTimeMillis())
+                UpdateCheckState.UpToDate(currentName, System.currentTimeMillis())
             }
 
             _updateCheckState.value = state
             state
         } catch (e: Exception) {
-            val errorState = UpdateCheckState.Error(e.message ?: "Failed to check for updates. Please check your network connection.")
+            val errorState = UpdateCheckState.Error(e.message ?: "Failed to check for updates.")
             _updateCheckState.value = errorState
             errorState
         }
     }
 
     /**
-     * Fetches update information.
-     * Checks remote GitHub API / endpoint if accessible, and falls back to latest release info.
+     * Fetches update information from the official GitHub repository.
      */
     private fun fetchRemoteUpdateInfo(): AppUpdateInfo? {
-        // Try fetching from GitHub releases API if available
         try {
             val request = Request.Builder()
-                .url("https://api.github.com/repos/expense-tracker-org/expense-tracker/releases/latest")
+                .url("https://api.github.com/repos/rajuX75/expensec/releases/latest")
                 .header("Accept", "application/vnd.github.v3+json")
+                .header("User-Agent", "ExpenseTracker-AndroidApp")
                 .build()
 
             client.newCall(request).execute().use { response ->
@@ -162,14 +140,14 @@ class UpdateRepository(
                     val body = response.body?.string()
                     if (!body.isNullOrBlank()) {
                         val json = JSONObject(body)
-                        val tagName = json.optString("tag_name", "v1.1.0")
-                        val releaseTitle = json.optString("name", "v1.1.0 Release")
+                        val tagName = json.optString("tag_name", "")
+                        val releaseTitle = json.optString("name", tagName)
                         val bodyText = json.optString("body", "")
-                        val publishedAt = json.optString("published_at", "2026-08-19")
+                        val publishedAt = json.optString("published_at", "")
                         val assets = json.optJSONArray("assets")
 
-                        var downloadUrl = json.optString("html_url", "https://github.com")
-                        var apkSizeMb = 12.5
+                        var downloadUrl = "https://github.com/rajuX75/expensec/releases/latest/download/expense-tracker-release.apk"
+                        var apkSizeMb = 20.1
 
                         if (assets != null && assets.length() > 0) {
                             for (i in 0 until assets.length()) {
@@ -192,10 +170,10 @@ class UpdateRepository(
                             versionCode = parsedCode,
                             versionName = tagName,
                             releaseTitle = releaseTitle,
-                            releaseNotes = bodyText.ifBlank { "What's new in $tagName:\n• Performance improvements and bug fixes\n• In-app update support" },
+                            releaseNotes = bodyText.ifBlank { "What's new in $tagName:\n• Performance improvements and bug fixes" },
                             changelog = parseChangelogFromText(bodyText),
                             downloadUrl = downloadUrl,
-                            releaseDate = publishedAt.take(10),
+                            releaseDate = if (publishedAt.length >= 10) publishedAt.take(10) else "Latest",
                             apkSizeMb = apkSizeMb,
                             isMandatory = false
                         )
@@ -203,51 +181,33 @@ class UpdateRepository(
                 }
             }
         } catch (_: Exception) {
-            // Offline or fallback to embedded release metadata
+            // Offline or no releases found on remote repository
         }
 
-        // Return latest available release metadata
-        return AppUpdateInfo(
-            versionCode = 2,
-            versionName = "v1.1.0",
-            releaseTitle = "v1.1.0 — In-App Updates & UI Enhancements",
-            releaseNotes = "• In-App Update checker with seamless skippable prompts and release logs\n• Dedicated 'App Updates & What's New' section in Settings\n• Changelog and release notes viewer with category badges\n• Real-time download progress tracking with direct APK installer\n• Optimized database backup and Firestore sync reliability",
-            changelog = listOf(
-                ChangelogItem(ChangelogType.FEATURE, "In-App Update checker with seamless skippable prompts and release logs"),
-                ChangelogItem(ChangelogType.FEATURE, "Dedicated 'App Updates & What's New' section in Settings"),
-                ChangelogItem(ChangelogType.FEATURE, "Changelog and release notes viewer with category badges"),
-                ChangelogItem(ChangelogType.IMPROVEMENT, "Real-time download progress tracking with direct APK installer"),
-                ChangelogItem(ChangelogType.IMPROVEMENT, "Optimized database backup and Firestore sync reliability"),
-                ChangelogItem(ChangelogType.FIX, "Fixed minor layout shifts in Settings navigation")
-            ),
-            downloadUrl = "https://github.com/releases/download/v1.1.0/expense-tracker-release.apk",
-            releaseDate = "2026-08-19",
-            apkSizeMb = 14.8,
-            isMandatory = false
-        )
+        // Return null if no remote update is available (prevents false positive updates)
+        return null
     }
 
     private fun parseVersionCodeFromTag(tagName: String): Int {
-        val clean = tagName.removePrefix("v").removePrefix("V")
+        val clean = tagName.removePrefix("v").removePrefix("V").trim()
         val parts = clean.split(".")
         return try {
             when (parts.size) {
-                1 -> parts[0].toInt()
-                2 -> parts[0].toInt() * 10 + parts[1].toInt()
-                3 -> parts[0].toInt() * 100 + parts[1].toInt() * 10 + parts[2].toInt()
-                else -> 2
+                1 -> parts[0].toIntOrNull() ?: 1
+                2 -> (parts[0].toIntOrNull() ?: 0) * 10 + (parts[1].toIntOrNull() ?: 0)
+                3 -> (parts[0].toIntOrNull() ?: 0) * 100 + (parts[1].toIntOrNull() ?: 0) * 10 + (parts[2].toIntOrNull() ?: 0)
+                else -> 1
             }
         } catch (e: Exception) {
-            2
+            1
         }
     }
 
     private fun parseChangelogFromText(text: String): List<ChangelogItem> {
         if (text.isBlank()) {
             return listOf(
-                ChangelogItem(ChangelogType.FEATURE, "Latest performance updates and enhancements"),
-                ChangelogItem(ChangelogType.IMPROVEMENT, "UI/UX enhancements"),
-                ChangelogItem(ChangelogType.FIX, "Bug fixes and stability improvements")
+                ChangelogItem(ChangelogType.FEATURE, "Performance and stability updates"),
+                ChangelogItem(ChangelogType.IMPROVEMENT, "User experience enhancements")
             )
         }
 
@@ -259,7 +219,7 @@ class UpdateRepository(
 
             val lower = line.lowercase()
             val type = when {
-                lower.contains("fix") || lower.contains("bug") || lower.contains("resolved") -> ChangelogType.FIX
+                lower.contains("fix") || lower.contains("bug") || lower.contains("resolved") || lower.contains("crash") -> ChangelogType.FIX
                 lower.contains("new") || lower.contains("add") || lower.contains("feature") -> ChangelogType.FEATURE
                 else -> ChangelogType.IMPROVEMENT
             }
@@ -281,7 +241,7 @@ class UpdateRepository(
     }
 
     /**
-     * Downloads and launches installation of the update APK.
+     * Downloads and launches installation of the update APK automatically.
      */
     suspend fun downloadAndInstallApk(
         updateInfo: AppUpdateInfo,
@@ -289,59 +249,54 @@ class UpdateRepository(
     ) = withContext(Dispatchers.IO) {
         _downloadState.value = UpdateDownloadState.Downloading(0.0f)
         try {
-            // Check if download URL is a valid direct link
-            if (updateInfo.downloadUrl.startsWith("http") && updateInfo.downloadUrl.endsWith(".apk")) {
-                val apkFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.cacheDir, "expense-tracker-${updateInfo.versionName}.apk")
-                if (apkFile.exists()) {
-                    apkFile.delete()
-                }
+            val targetDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.cacheDir
+            val apkFile = File(targetDir, "expense-tracker-${updateInfo.versionName}.apk")
+            if (apkFile.exists()) {
+                apkFile.delete()
+            }
 
-                val request = Request.Builder().url(updateInfo.downloadUrl).build()
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) throw Exception("Failed to download APK: HTTP ${response.code}")
+            val request = Request.Builder()
+                .url(updateInfo.downloadUrl)
+                .header("User-Agent", "ExpenseTracker-AndroidApp")
+                .build()
 
-                    val body = response.body ?: throw Exception("Empty response body")
-                    val totalLength = body.contentLength()
-                    var bytesDownloaded = 0L
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw Exception("Failed to download APK: HTTP ${response.code}")
 
-                    body.byteStream().use { input ->
-                        FileOutputStream(apkFile).use { output ->
-                            val buffer = ByteArray(8192)
-                            var read: Int
-                            while (input.read(buffer).also { read = it } != -1) {
-                                output.write(buffer, 0, read)
-                                bytesDownloaded += read
-                                val progress = if (totalLength > 0) (bytesDownloaded.toFloat() / totalLength.toFloat()).coerceIn(0f, 1f) else 0.5f
-                                _downloadState.value = UpdateDownloadState.Downloading(progress, bytesDownloaded, totalLength)
-                                onProgress(progress)
-                            }
-                            output.flush()
+                val body = response.body ?: throw Exception("Empty response body")
+                val totalLength = body.contentLength()
+                var bytesDownloaded = 0L
+
+                body.byteStream().use { input ->
+                    FileOutputStream(apkFile).use { output ->
+                        val buffer = ByteArray(8192)
+                        var read: Int
+                        while (input.read(buffer).also { read = it } != -1) {
+                            output.write(buffer, 0, read)
+                            bytesDownloaded += read
+                            val progress = if (totalLength > 0) (bytesDownloaded.toFloat() / totalLength.toFloat()).coerceIn(0f, 1f) else 0.5f
+                            _downloadState.value = UpdateDownloadState.Downloading(progress, bytesDownloaded, totalLength)
+                            onProgress(progress)
                         }
+                        output.flush()
                     }
                 }
+            }
 
-                val contentUri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    apkFile
-                )
+            val contentUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile
+            )
 
-                _downloadState.value = UpdateDownloadState.Downloaded(contentUri)
+            _downloadState.value = UpdateDownloadState.Downloaded(contentUri)
 
-                // Launch package installer
-                withContext(Dispatchers.Main) {
-                    launchApkInstaller(contentUri)
-                }
-            } else {
-                // Open browser or download link directly
-                withContext(Dispatchers.Main) {
-                    openInBrowser(updateInfo.downloadUrl)
-                }
-                _downloadState.value = UpdateDownloadState.Idle
+            withContext(Dispatchers.Main) {
+                launchApkInstaller(contentUri)
             }
         } catch (e: Exception) {
             _downloadState.value = UpdateDownloadState.Error(e.message ?: "Failed to download update")
-            // Fallback to opening download URL in browser
+            // Open download link in browser as fallback
             withContext(Dispatchers.Main) {
                 openInBrowser(updateInfo.downloadUrl)
             }
@@ -356,8 +311,7 @@ class UpdateRepository(
             }
             context.startActivity(intent)
         } catch (e: Exception) {
-            // If installer fails, fallback to opening browser
-            openInBrowser("https://github.com")
+            openInBrowser("https://github.com/rajuX75/expensec/releases")
         }
     }
 

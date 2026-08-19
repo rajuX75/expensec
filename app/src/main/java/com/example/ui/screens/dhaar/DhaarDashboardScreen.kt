@@ -432,25 +432,36 @@ fun ContactListItemCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = when {
-                        isTheyOweYou -> IncomeGreen.copy(alpha = 0.15f)
-                        isYouOweThem -> ExpenseRed.copy(alpha = 0.15f)
-                        else -> MaterialTheme.colorScheme.primaryContainer
-                    },
-                    modifier = Modifier.size(46.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = contact.name.take(1).uppercase(),
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = when {
-                                isTheyOweYou -> IncomeGreen
-                                isYouOweThem -> ExpenseRed
-                                else -> MaterialTheme.colorScheme.onPrimaryContainer
-                            }
-                        )
+                if (!contact.photoUri.isNullOrBlank()) {
+                    coil.compose.AsyncImage(
+                        model = contact.photoUri,
+                        contentDescription = contact.name,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Surface(
+                        shape = CircleShape,
+                        color = when {
+                            isTheyOweYou -> IncomeGreen.copy(alpha = 0.15f)
+                            isYouOweThem -> ExpenseRed.copy(alpha = 0.15f)
+                            else -> MaterialTheme.colorScheme.primaryContainer
+                        },
+                        modifier = Modifier.size(46.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = contact.name.take(1).uppercase(),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = when {
+                                    isTheyOweYou -> IncomeGreen
+                                    isYouOweThem -> ExpenseRed
+                                    else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                }
+                            )
+                        }
                     }
                 }
 
