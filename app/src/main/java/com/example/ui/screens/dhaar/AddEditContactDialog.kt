@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.Contact
 import com.example.ui.viewmodel.ExpenseViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun AddEditContactDialog(
@@ -44,11 +45,20 @@ fun AddEditContactDialog(
     var photoUri by remember { mutableStateOf(contactToEdit?.photoUri) }
     var nameError by remember { mutableStateOf(false) }
 
+    val scope = rememberCoroutineScope()
+
     // Image Picker Launcher for Contact Avatar
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { photoUri = it.toString() }
+        uri?.let {
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).let { _ ->
+                scope.launch {
+                    val persistentUri = com.example.ui.components.ImageStorageHelper.saveImageLocally(context, it, "contacts")
+                    photoUri = persistentUri ?: it.toString()
+                }
+            }
+        }
     }
 
     // Safe Phone Contact Picker using CommonDataKinds.Phone
@@ -86,7 +96,10 @@ fun AddEditContactDialog(
                             if (photoIdx >= 0) {
                                 val pickedPhoto = cursor.getString(photoIdx)
                                 if (!pickedPhoto.isNullOrBlank()) {
-                                    photoUri = pickedPhoto
+                                    scope.launch {
+                                        val saved = com.example.ui.components.ImageStorageHelper.saveImageLocally(context, Uri.parse(pickedPhoto), "contacts")
+                                        photoUri = saved ?: pickedPhoto
+                                    }
                                 }
                             }
                         }

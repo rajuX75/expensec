@@ -129,6 +129,32 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             googleAuthManager.currentUser.collect { user ->
                 if (user != null) {
+                    // Automatically populate profile info from Google account
+                    val googleName = user.displayName?.trim()
+                    val googleEmail = user.email?.trim()
+                    val googlePhoto = user.photoUrl?.toString()
+
+                    if (!googleName.isNullOrBlank()) {
+                        if (userPrefs.displayName.value.isBlank() || userPrefs.displayName.value == "Set your name") {
+                            userPrefs.setDisplayName(googleName)
+                        }
+                    } else if (!googleEmail.isNullOrBlank() && userPrefs.displayName.value.isBlank()) {
+                        val derivedName = googleEmail.substringBefore('@')
+                            .replace('.', ' ')
+                            .replace('_', ' ')
+                            .split(" ")
+                            .joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
+                        userPrefs.setDisplayName(derivedName)
+                    }
+
+                    if (!googlePhoto.isNullOrBlank() && userPrefs.profilePictureUri.value.isNullOrBlank()) {
+                        userPrefs.setProfilePictureUri(googlePhoto)
+                    }
+
+                    if (!googleEmail.isNullOrBlank()) {
+                        userPrefs.setGoogleAccount(googleEmail)
+                    }
+
                     firestoreSyncManager.startRealtimeSync(user.uid, viewModelScope)
                     try {
                         firestoreSyncManager.syncAll(user.uid)

@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.AccountEntity
+import kotlinx.coroutines.launch
 import com.example.data.model.Contact
 import com.example.data.model.DhaarEntry
 import com.example.ui.theme.Emerald400
@@ -84,11 +85,18 @@ fun AddEditDhaarDialog(
 
     val dateFormat = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
 
+    val scope = rememberCoroutineScope()
+
     // System Image Picker launcher
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { photoUriString = it.toString() }
+        uri?.let {
+            scope.launch {
+                val saved = com.example.ui.components.ImageStorageHelper.saveImageLocally(context, it, "receipts")
+                photoUriString = saved ?: it.toString()
+            }
+        }
     }
 
     // Contact Picker from Phone Contacts

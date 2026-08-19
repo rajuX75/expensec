@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.ui.viewmodel.ExpenseViewModel
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.*
 
@@ -50,11 +51,19 @@ fun ProfileScreen(
     var showEditNameDialog by remember { mutableStateOf(false) }
     var showColorPickerDialog by remember { mutableStateOf(false) }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+
     // Image Picker Launcher for Profile Picture
     val photoPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
     ) { uri: android.net.Uri? ->
-        uri?.let { viewModel.setProfilePictureUri(it.toString()) }
+        uri?.let {
+            scope.launch {
+                val persistentUri = com.example.ui.components.ImageStorageHelper.saveImageLocally(context, it, "profile")
+                viewModel.setProfilePictureUri(persistentUri ?: it.toString())
+            }
+        }
     }
 
     val email = firebaseUser?.email ?: googleEmail ?: ""

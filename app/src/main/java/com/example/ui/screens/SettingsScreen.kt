@@ -10,12 +10,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +25,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.example.data.repository.AvailableCurrencies
 import com.example.data.repository.CurrencyInfo
 import com.example.ui.viewmodel.ExpenseViewModel
@@ -78,8 +81,6 @@ fun SettingsScreen(
     LaunchedEffect(updateCheckState) {
         if (updateCheckState is com.example.data.model.UpdateCheckState.UpdateAvailable) {
             showUpdateDialog = true
-        } else if (updateCheckState is com.example.data.model.UpdateCheckState.UpToDate) {
-            // Only toast if recently manually triggered
         } else if (updateCheckState is com.example.data.model.UpdateCheckState.Error) {
             Toast.makeText(context, (updateCheckState as com.example.data.model.UpdateCheckState.Error).message, Toast.LENGTH_SHORT).show()
         }
@@ -103,87 +104,124 @@ fun SettingsScreen(
         contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
     ) {
 
-        // ── Profile Card ──────────────────────────────────────────
+        // ── 1. Hero Profile Banner Card ───────────────────────────
         item {
             Card(
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable(onClick = onNavigateToProfile)
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(18.dp)
                 ) {
-                    // Avatar
-                    if (!profilePictureUri.isNullOrBlank()) {
-                        coil.compose.AsyncImage(
-                            model = profilePictureUri,
-                            contentDescription = "Profile Avatar",
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(avatarColor),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            androidx.compose.material3.Text(
-                                text = avatarInitial,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (displayName.isNotBlank()) displayName else "Set your name",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (displayName.isNotBlank()) MaterialTheme.colorScheme.onSurface
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = if (email.isNotBlank()) email else "Not signed in",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (firebaseUser != null) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = Color(0xFF10B981).copy(alpha = 0.12f),
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Text(
-                                    "Firebase Linked",
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = Color(0xFF10B981)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Profile Avatar
+                        Box(contentAlignment = Alignment.BottomEnd) {
+                            if (!profilePictureUri.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = profilePictureUri,
+                                    contentDescription = "Profile Avatar",
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(62.dp)
+                                        .clip(CircleShape)
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(62.dp)
+                                        .clip(CircleShape)
+                                        .background(avatarColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = avatarInitial,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                            if (firebaseUser != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF10B981)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = "Synced",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
                             }
                         }
+
+                        Spacer(Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (displayName.isNotBlank()) displayName else "Set your name",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = if (displayName.isNotBlank()) MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = if (email.isNotBlank()) email else "Local mode • Sign in for cloud sync",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(Modifier.height(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (firebaseUser != null) Color(0xFF10B981).copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(if (firebaseUser != null) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant)
+                                    )
+                                    Text(
+                                        text = if (firebaseUser != null) "Cloud Synced • Active" else "Offline Storage",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = if (firebaseUser != null) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = "View Profile",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
 
-        // ── Firebase Database & Sync ──────────────────────────────
+        // ── 2. Firebase Database & Cloud Sync ─────────────────────
         item {
-            Text(
-                text = "Firebase Database & Sync",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-            )
+            SettingsSectionHeader(title = "Cloud & Database Sync")
         }
         item {
             com.example.ui.components.FirebaseSyncCard(
@@ -192,13 +230,9 @@ fun SettingsScreen(
             )
         }
 
-        // ── Preferences ───────────────────────────────────────────
+        // ── 3. General Preferences ────────────────────────────────
         item {
-            Text(
-                text = "Preferences",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-            )
+            SettingsSectionHeader(title = "General Preferences")
         }
         item {
             Card(
@@ -212,81 +246,51 @@ fun SettingsScreen(
                         icon = Icons.Default.CurrencyExchange,
                         title = "Currency",
                         subtitle = "$currentCurrency ($currentSymbol)",
+                        iconTint = Color(0xFF6366F1),
                         onClick = { showCurrencyDialog = true }
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                     // Theme
                     var expandedTheme by remember { mutableStateOf(false) }
                     SettingsItem(
                         icon = Icons.Default.Palette,
                         title = "Theme Mode",
-                        subtitle = currentTheme.lowercase().replaceFirstChar { it.uppercase() },
+                        subtitle = when (currentTheme) {
+                            "DARK" -> "Dark Mode"
+                            "LIGHT" -> "Light Mode"
+                            else -> "System Default"
+                        },
+                        iconTint = Color(0xFFEC4899),
                         onClick = { expandedTheme = true }
                     )
                     DropdownMenu(expanded = expandedTheme, onDismissRequest = { expandedTheme = false }) {
-                        listOf("SYSTEM" to "Follow System", "LIGHT" to "Light Mode", "DARK" to "Dark Mode").forEach { (mode, label) ->
+                        listOf("SYSTEM" to "System Default", "LIGHT" to "Light Mode", "DARK" to "Dark Mode").forEach { (mode, label) ->
                             DropdownMenuItem(
                                 text = { Text(label) },
+                                leadingIcon = { if (mode == currentTheme) Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) },
                                 onClick = { viewModel.setThemeMode(mode); expandedTheme = false }
                             )
                         }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                     // Categories Management
                     SettingsItem(
                         icon = Icons.Default.Category,
                         title = "Manage Categories",
                         subtitle = "Customize expense & income categories",
+                        iconTint = Color(0xFFF59E0B),
                         onClick = { showCategoryDialog = true }
                     )
                 }
             }
         }
 
-        // ── Notifications ─────────────────────────────────────────
+        // ── 4. Display & Formatting ───────────────────────────────
         item {
-            Text(
-                text = "Notifications",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        item {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    SettingsSwitchItem(
-                        icon = Icons.Default.Notifications,
-                        title = "Due Date Reminders",
-                        subtitle = "Remind before bill & loan due dates",
-                        checked = dueRemindersEnabled,
-                        onCheckedChange = { viewModel.setDueRemindersEnabled(it) }
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SettingsSwitchItem(
-                        icon = Icons.Default.NotificationsActive,
-                        title = "Budget Alert Notifications",
-                        subtitle = "Notify when approaching budget limits",
-                        checked = budgetAlertsEnabled,
-                        onCheckedChange = { viewModel.setBudgetAlertsEnabled(it) }
-                    )
-                }
-            }
-        }
-
-        // ── Display & Format ──────────────────────────────────────
-        item {
-            Text(
-                text = "Display & Format",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-            )
+            SettingsSectionHeader(title = "Display & Formatting")
         }
         item {
             Card(
@@ -299,12 +303,13 @@ fun SettingsScreen(
                     var expandedDecimal by remember { mutableStateOf(false) }
                     SettingsItem(
                         icon = Icons.Default.Numbers,
-                        title = "Decimal Places",
-                        subtitle = if (decimalPlaces == 0) "None (e.g. $1,234)" else "$decimalPlaces decimal places (e.g. $1,234.${"0".repeat(decimalPlaces)})",
+                        title = "Decimal Precision",
+                        subtitle = if (decimalPlaces == 0) "No decimals (e.g. $1,234)" else "2 decimal places (e.g. $1,234.00)",
+                        iconTint = Color(0xFF0284C7),
                         onClick = { expandedDecimal = true }
                     )
                     DropdownMenu(expanded = expandedDecimal, onDismissRequest = { expandedDecimal = false }) {
-                        listOf(0 to "None — $1,234", 2 to "2 places — $1,234.00").forEach { (places, label) ->
+                        listOf(0 to "No decimals — $1,234", 2 to "2 places — $1,234.00").forEach { (places, label) ->
                             DropdownMenuItem(
                                 text = { Text(label) },
                                 leadingIcon = { if (places == decimalPlaces) Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) },
@@ -313,14 +318,15 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                     // Week Start Day
                     var expandedWeek by remember { mutableStateOf(false) }
                     SettingsItem(
                         icon = Icons.Default.CalendarToday,
-                        title = "Week Starts On",
+                        title = "First Day of Week",
                         subtitle = if (weekStartDay == "MONDAY") "Monday" else "Sunday",
+                        iconTint = Color(0xFF0D9488),
                         onClick = { expandedWeek = true }
                     )
                     DropdownMenu(expanded = expandedWeek, onDismissRequest = { expandedWeek = false }) {
@@ -333,22 +339,23 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                     // Date Format
                     var expandedDate by remember { mutableStateOf(false) }
                     SettingsItem(
                         icon = Icons.Default.DateRange,
-                        title = "Date Format",
+                        title = "Date Display Format",
                         subtitle = dateFormatPref,
+                        iconTint = Color(0xFF8B5CF6),
                         onClick = { expandedDate = true }
                     )
                     DropdownMenu(expanded = expandedDate, onDismissRequest = { expandedDate = false }) {
                         listOf(
-                            "MMM dd, yyyy" to "Jan 15, 2025",
-                            "dd/MM/yyyy" to "15/01/2025",
-                            "MM/dd/yyyy" to "01/15/2025",
-                            "yyyy-MM-dd" to "2025-01-15"
+                            "MMM dd, yyyy" to "Jan 15, 2026",
+                            "dd/MM/yyyy" to "15/01/2026",
+                            "MM/dd/yyyy" to "01/15/2026",
+                            "yyyy-MM-dd" to "2026-01-15"
                         ).forEach { (fmt, example) ->
                             DropdownMenuItem(
                                 text = { Text("$example  ($fmt)") },
@@ -361,13 +368,41 @@ fun SettingsScreen(
             }
         }
 
-        // ── App Behavior ──────────────────────────────────────────
+        // ── 5. Notifications & Alerts ─────────────────────────────
         item {
-            Text(
-                text = "App Behavior",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-            )
+            SettingsSectionHeader(title = "Notifications & Reminders")
+        }
+        item {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SettingsSwitchItem(
+                        icon = Icons.Default.Notifications,
+                        title = "Due Date Reminders",
+                        subtitle = "Alerts before bill & loan due dates",
+                        iconTint = Color(0xFFF59E0B),
+                        checked = dueRemindersEnabled,
+                        onCheckedChange = { viewModel.setDueRemindersEnabled(it) }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    SettingsSwitchItem(
+                        icon = Icons.Default.NotificationsActive,
+                        title = "Budget Alerts",
+                        subtitle = "Notify when approaching monthly limits",
+                        iconTint = Color(0xFFEF4444),
+                        checked = budgetAlertsEnabled,
+                        onCheckedChange = { viewModel.setBudgetAlertsEnabled(it) }
+                    )
+                }
+            }
+        }
+
+        // ── 6. App Behavior ───────────────────────────────────────
+        item {
+            SettingsSectionHeader(title = "Smart Features & Behavior")
         }
         item {
             Card(
@@ -378,20 +413,22 @@ fun SettingsScreen(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     SettingsSwitchItem(
                         icon = Icons.Default.AutoAwesome,
-                        title = "Auto-Categorization",
-                        subtitle = "Suggest category based on merchant name",
+                        title = "Smart Auto-Categorization",
+                        subtitle = "Detect category from payee / merchant",
+                        iconTint = Color(0xFF8B5CF6),
                         checked = autoCategorize,
                         onCheckedChange = { viewModel.setAutoCategorize(it) }
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                     // Default Transaction Type
                     var expandedTxType by remember { mutableStateOf(false) }
                     SettingsItem(
                         icon = Icons.Default.AddCircleOutline,
-                        title = "Default Transaction Type",
+                        title = "Default Entry Type",
                         subtitle = defaultTxType.lowercase().replaceFirstChar { it.uppercase() },
+                        iconTint = Color(0xFF10B981),
                         onClick = { expandedTxType = true }
                     )
                     DropdownMenu(expanded = expandedTxType, onDismissRequest = { expandedTxType = false }) {
@@ -404,12 +441,13 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                     SettingsSwitchItem(
                         icon = Icons.Default.Vibration,
-                        title = "Haptic Feedback",
-                        subtitle = "Vibration on button taps and interactions",
+                        title = "Haptic Touch Feedback",
+                        subtitle = "Subtle vibrations on actions",
+                        iconTint = Color(0xFF64748B),
                         checked = hapticFeedback,
                         onCheckedChange = { viewModel.setHapticFeedback(it) }
                     )
@@ -417,13 +455,9 @@ fun SettingsScreen(
             }
         }
 
-        // ── Security & Privacy ────────────────────────────────────
+        // ── 7. Security & App Lock ────────────────────────────────
         item {
-            Text(
-                text = "Security & Privacy",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-            )
+            SettingsSectionHeader(title = "Security & Privacy")
         }
         item {
             Card(
@@ -434,8 +468,9 @@ fun SettingsScreen(
                 Column(modifier = Modifier.fillMaxWidth()) {
                     SettingsSwitchItem(
                         icon = Icons.Default.Lock,
-                        title = "PIN Lock Protection",
-                        subtitle = if (isPinLockEnabled) "App is protected by 4-digit PIN" else "Disabled — tap to enable",
+                        title = "4-Digit PIN Lock",
+                        subtitle = if (isPinLockEnabled) "App is protected with passcode" else "Disabled — tap to protect app",
+                        iconTint = Color(0xFFF97316),
                         checked = isPinLockEnabled,
                         onCheckedChange = { enable ->
                             if (enable) showPinSetupDialog = true
@@ -445,83 +480,37 @@ fun SettingsScreen(
                             }
                         }
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SettingsItem(
-                        icon = Icons.Default.PrivacyTip,
-                        title = "Data Privacy",
-                        subtitle = "All data stored locally. Cloud sync is optional & encrypted.",
-                        onClick = { Toast.makeText(context, "Your data stays private and local-first.", Toast.LENGTH_LONG).show() }
-                    )
+                    if (isPinLockEnabled) {
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        SettingsItem(
+                            icon = Icons.Default.Key,
+                            title = "Change PIN Code",
+                            subtitle = "Update your existing 4-digit passcode",
+                            iconTint = Color(0xFFF97316),
+                            onClick = { showPinSetupDialog = true }
+                        )
+                    }
                 }
             }
         }
 
-        // ── Data Portability ──────────────────────────────────────
+        // ── 8. Updates & Changelog ────────────────────────────────
         item {
-            Text(
-                text = "Data Portability & Management",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        item {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    SettingsItem(
-                        icon = Icons.Default.FileDownload,
-                        title = "Export Data",
-                        subtitle = "Save JSON backup or CSV spreadsheet to storage",
-                        onClick = onNavigateToExport
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SettingsItem(
-                        icon = Icons.Default.FileUpload,
-                        title = "Import Data",
-                        subtitle = "Restore or merge data from local JSON backup",
-                        onClick = onNavigateToImport
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SettingsItem(
-                        icon = Icons.Default.CloudDownload,
-                        title = "Load Demo Data",
-                        subtitle = "Populate realistic sample expenses and budgets",
-                        onClick = {
-                            viewModel.seedDemoData()
-                            Toast.makeText(context, "Demo data populated!", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SettingsItem(
-                        icon = Icons.Default.DeleteSweep,
-                        title = "Clear All Data",
-                        subtitle = "Erase all transactions, budgets & categories",
-                        titleColor = MaterialTheme.colorScheme.error,
-                        iconTint = MaterialTheme.colorScheme.error,
-                        onClick = { showResetConfirmDialog = true }
-                    )
-                }
-            }
-        }
-
-        // ── App Updates & Changelog ──────────────────────────────
-        item {
-            Text(
-                text = "App Updates & Changelog",
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-            )
+            SettingsSectionHeader(title = "App Updates & Version")
         }
         item {
             val isChecking = updateCheckState is com.example.data.model.UpdateCheckState.Checking
-            val lastCheckedFormatted = if (lastUpdateCheckTime > 0) {
-                val sdf = java.text.SimpleDateFormat("MMM dd, hh:mm a", java.util.Locale.getDefault())
-                "Last checked: ${sdf.format(java.util.Date(lastUpdateCheckTime))}"
-            } else {
-                "Not checked yet"
+            val lastCheckedFormatted = remember(lastUpdateCheckTime) {
+                if (lastUpdateCheckTime == 0L) "Not checked yet"
+                else {
+                    val diffMin = (System.currentTimeMillis() - lastUpdateCheckTime) / 60000
+                    when {
+                        diffMin < 1 -> "Just now"
+                        diffMin < 60 -> "${diffMin}m ago"
+                        diffMin < 1440 -> "${diffMin / 60}h ago"
+                        else -> "${diffMin / 1440}d ago"
+                    }
+                }
             }
 
             Card(
@@ -530,7 +519,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    // Check for Updates item
+                    // Check for Updates Row
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -544,41 +533,22 @@ fun SettingsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
+                                    .size(42.dp)
+                                    .background(Color(0xFF7C3AED).copy(alpha = 0.12f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.SystemUpdate,
                                     contentDescription = "Check for Updates",
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = Color(0xFF7C3AED),
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-                            Spacer(Modifier.width(12.dp))
+                            Spacer(Modifier.width(14.dp))
                             Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "Check for Updates",
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                                    )
-                                    if (updateCheckState is com.example.data.model.UpdateCheckState.UpdateAvailable) {
-                                        Spacer(Modifier.width(6.dp))
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = Color(0xFF10B981)
-                                        ) {
-                                            Text(
-                                                text = "NEW",
-                                                color = Color.White,
-                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
-                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                            )
-                                        }
-                                    }
-                                }
+                                Text("Check for Updates", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
                                 Text(
-                                    text = if (isChecking) "Checking for updates..." else "Current v${viewModel.currentAppVersionName} • $lastCheckedFormatted",
+                                    text = if (isChecking) "Checking GitHub repository..." else "Version ${viewModel.currentAppVersionName} • $lastCheckedFormatted",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -591,29 +561,80 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.primary
                             )
                         } else {
-                            Icon(Icons.Default.Refresh, contentDescription = "Check Now", tint = MaterialTheme.colorScheme.primary)
+                            FilledTonalButton(
+                                onClick = { viewModel.checkForUpdates(isManual = true) },
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text("Check", fontSize = 12.sp)
+                            }
                         }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                     // What's New & Release Notes
                     SettingsItem(
                         icon = Icons.Default.HistoryEdu,
                         title = "What's New & Release Notes",
-                        subtitle = "View changelog history and latest feature logs",
+                        subtitle = "Changelog history and feature breakdown",
+                        iconTint = Color(0xFF7C3AED),
                         onClick = { showChangelogDialog = true }
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                     // Auto Check Updates Switch
                     SettingsSwitchItem(
                         icon = Icons.Default.CloudSync,
-                        title = "Automatic Update Check",
-                        subtitle = "Check for new versions automatically on startup",
+                        title = "Automatic Startup Check",
+                        subtitle = "Prompt automatically when a newer release is published",
+                        iconTint = Color(0xFF7C3AED),
                         checked = autoCheckUpdates,
                         onCheckedChange = { viewModel.setAutoCheckUpdates(it) }
+                    )
+                }
+            }
+        }
+
+        // ── 9. Data Management & Danger Zone ──────────────────────
+        item {
+            SettingsSectionHeader(title = "Data Management")
+        }
+        item {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SettingsItem(
+                        icon = Icons.Default.FileDownload,
+                        title = "Export Financial Records",
+                        subtitle = "Export transactions to CSV or JSON file",
+                        iconTint = Color(0xFF059669),
+                        onClick = onNavigateToExport
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    SettingsItem(
+                        icon = Icons.Default.FileUpload,
+                        title = "Import Records",
+                        subtitle = "Restore transactions from a CSV backup",
+                        iconTint = Color(0xFF0284C7),
+                        onClick = onNavigateToImport
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    SettingsItem(
+                        icon = Icons.Default.DeleteSweep,
+                        title = "Erase All Local Data",
+                        subtitle = "Reset all transactions, contacts & accounts to blank",
+                        iconTint = Color(0xFFEF4444),
+                        titleColor = MaterialTheme.colorScheme.error,
+                        onClick = { showResetConfirmDialog = true }
                     )
                 }
             }
@@ -622,18 +643,27 @@ fun SettingsScreen(
         // App Info footer
         item {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Expense Tracker v${viewModel.currentAppVersionName}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    "Secure local-first personal financial manager",
+                    text = "Expense Tracker v${viewModel.currentAppVersionName}",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "Local-first personal finance with real-time cloud sync",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             }
         }
     }
+
+    // ── Dialogs ───────────────────────────────────────────────────
 
     // Currency Selector Dialog
     if (showCurrencyDialog) {
@@ -750,11 +780,16 @@ fun SettingsScreen(
                         Toast.makeText(context, "All data cleared", Toast.LENGTH_SHORT).show()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Clear All") }
+                ) {
+                    Text("Clear Everything")
+                }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showResetConfirmDialog = false }) { Text("Cancel") }
-            }
+                TextButton(onClick = { showResetConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
         )
     }
 
@@ -790,13 +825,26 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun SettingsSectionHeader(title: String) {
+    Text(
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelMedium.copy(
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        ),
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+    )
+}
+
+@Composable
 fun SettingsSwitchItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    iconTint: Color = Color.Unspecified
+    iconTint: Color = Color(0xFF6366F1)
 ) {
     Row(
         modifier = Modifier
@@ -808,22 +856,18 @@ fun SettingsSwitchItem(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        if (iconTint != Color.Unspecified) iconTint.copy(alpha = 0.12f)
-                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        CircleShape
-                    ),
+                    .size(42.dp)
+                    .background(iconTint.copy(alpha = 0.12f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    tint = if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.primary,
+                    tint = iconTint,
                     modifier = Modifier.size(20.dp)
                 )
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
             Column {
                 Text(title, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
                 Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -841,7 +885,7 @@ fun SettingsItem(
     subtitle: String,
     onClick: () -> Unit,
     titleColor: Color = Color.Unspecified,
-    iconTint: Color = Color.Unspecified
+    iconTint: Color = Color(0xFF6366F1)
 ) {
     Row(
         modifier = Modifier
@@ -854,32 +898,36 @@ fun SettingsItem(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        if (iconTint != Color.Unspecified) iconTint.copy(alpha = 0.12f)
-                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        CircleShape
-                    ),
+                    .size(42.dp)
+                    .background(iconTint.copy(alpha = 0.12f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    tint = if (iconTint != Color.Unspecified) iconTint else MaterialTheme.colorScheme.primary,
+                    tint = iconTint,
                     modifier = Modifier.size(20.dp)
                 )
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
             Column {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                     color = if (titleColor != Color.Unspecified) titleColor else MaterialTheme.colorScheme.onSurface
                 )
-                Text(text = subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowForwardIos,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(14.dp)
+        )
     }
 }
-
