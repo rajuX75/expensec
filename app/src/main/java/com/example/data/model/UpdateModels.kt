@@ -9,29 +9,53 @@ enum class ChangelogType(val label: String, val badgeColor: Long) {
 }
 
 data class ChangelogItem(
-    val type: ChangelogType,
-    val text: String
+    val type: ChangelogType = ChangelogType.FEATURE,
+    val text: String = ""
+)
+
+data class AnnouncementBanner(
+    val id: String = "",
+    val title: String = "",
+    val message: String = "",
+    val actionUrl: String? = null,
+    val actionText: String? = null,
+    val type: String = "INFO", // INFO, WARNING, SUCCESS
+    val active: Boolean = false,
+    val dismissible: Boolean = true
+)
+
+data class AppRemoteConfig(
+    val appName: String = "Expense Tracker",
+    val supportEmail: String = "support@expensex.app",
+    val privacyPolicyUrl: String = "https://github.com/rajuX75/expensec/blob/main/PRIVACY_POLICY.md",
+    val termsUrl: String = "https://github.com/rajuX75/expensec/blob/main/TERMS.md",
+    val githubRepoUrl: String = "https://github.com/rajuX75/expensec",
+    val defaultCurrency: String = "USD",
+    val maintenanceMode: Boolean = false,
+    val maintenanceMessage: String = "",
+    val announcement: AnnouncementBanner? = null
 )
 
 data class AppUpdateInfo(
-    val versionCode: Int,
-    val versionName: String,
-    val releaseTitle: String,
-    val releaseNotes: String,
+    val versionCode: Int = 1,
+    val versionName: String = "1.0.0",
+    val minSupportedVersionCode: Int = 1,
+    val releaseTitle: String = "",
+    val releaseNotes: String = "",
     val changelog: List<ChangelogItem> = emptyList(),
-    val downloadUrl: String,
-    val releaseDate: String,
-    val apkSizeMb: Double = 12.5,
+    val downloadUrl: String = "",
+    val releaseDate: String = "",
+    val apkSizeMb: Double = 20.1,
     val isMandatory: Boolean = false
 )
 
 data class VersionReleaseLog(
-    val versionName: String,
-    val versionCode: Int,
-    val releaseDate: String,
-    val title: String,
+    val versionName: String = "",
+    val versionCode: Int = 1,
+    val releaseDate: String = "",
+    val title: String = "",
     val isCurrent: Boolean = false,
-    val changes: List<ChangelogItem>
+    val changes: List<ChangelogItem> = emptyList()
 )
 
 sealed class UpdateCheckState {

@@ -38,14 +38,16 @@ fun UpdateDialog(
     onDismissClick: () -> Unit
 ) {
     val isDownloading = downloadState is UpdateDownloadState.Downloading
+    val isMandatory = updateInfo.isMandatory
+    val canDismiss = !isDownloading && !isMandatory
 
     Dialog(
         onDismissRequest = {
-            if (!isDownloading) onDismissClick()
+            if (canDismiss) onDismissClick()
         },
         properties = DialogProperties(
-            dismissOnBackPress = !isDownloading,
-            dismissOnClickOutside = !isDownloading
+            dismissOnBackPress = canDismiss,
+            dismissOnClickOutside = canDismiss
         )
     ) {
         Card(
@@ -67,13 +69,13 @@ fun UpdateDialog(
                     modifier = Modifier
                         .size(64.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(if (isMandatory) Color(0xFFEF4444).copy(alpha = 0.15f) else MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.SystemUpdate,
+                        imageVector = if (isMandatory) Icons.Default.PriorityHigh else Icons.Default.SystemUpdate,
                         contentDescription = "Update Available",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = if (isMandatory) Color(0xFFEF4444) else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(36.dp)
                     )
                 }
@@ -82,9 +84,9 @@ fun UpdateDialog(
 
                 // Title
                 Text(
-                    text = "Update Available!",
+                    text = if (isMandatory) "Mandatory Update Required" else "Update Available!",
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (isMandatory) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -147,7 +149,23 @@ fun UpdateDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                if (isMandatory) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFEF4444).copy(alpha = 0.1f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "⚠️ This version includes mandatory security updates. Please update to continue using the app.",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                            color = Color(0xFFDC2626),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
@@ -195,7 +213,7 @@ fun UpdateDialog(
                             }
                         } else {
                             Text(
-                                text = updateInfo.releaseNotes,
+                                text = updateInfo.releaseNotes.ifBlank { "Performance improvements and bug fixes." },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -251,40 +269,41 @@ fun UpdateDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isDownloading) "Downloading..." else "Update Now",
+                        text = if (isDownloading) "Downloading..." else if (isMandatory) "Update & Continue" else "Update Now",
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Secondary Actions: Remind Me Later / Skip This Version
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(
-                        onClick = onSkipClick,
-                        enabled = !isDownloading
+                // Secondary Actions: Remind Me Later / Skip This Version (Only if NOT mandatory)
+                if (!isMandatory) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Skip this version",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                        TextButton(
+                            onClick = onSkipClick,
+                            enabled = !isDownloading
+                        ) {
+                            Text(
+                                text = "Skip this version",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
-                    TextButton(
-                        onClick = onDismissClick,
-                        enabled = !isDownloading
-                    ) {
-                        Text(
-                            text = "Remind me later",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        TextButton(
+                            onClick = onDismissClick,
+                            enabled = !isDownloading
+                        ) {
+                            Text(
+                                text = "Remind me later",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }

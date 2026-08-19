@@ -53,7 +53,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     )
     val googleAuthManager = GoogleAuthManager(application, userPrefs)
     val firestoreSyncManager = com.example.data.cloud.FirestoreSyncManager(application, database, userPrefs)
-    val updateRepository = com.example.data.repository.UpdateRepository(application, userPrefs)
+    val firebaseConfigManager = com.example.data.cloud.FirebaseConfigManager(application, viewModelScope)
+    val updateRepository = com.example.data.repository.UpdateRepository(application, userPrefs, firebaseConfigManager)
 
     // User Preferences
     val currency = userPrefs.currency
@@ -124,6 +125,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _isAppUnlocked = MutableStateFlow(false)
     val isAppUnlocked = _isAppUnlocked.asStateFlow()
 
+    // Firebase Realtime DB App Config & Remote State
+    val remoteConfig = firebaseConfigManager.remoteConfig
+    val remoteUpdateInfo = firebaseConfigManager.remoteUpdateInfo
+    val isFirebaseConfigConnected = firebaseConfigManager.isConnected
+
     init {
         loadSafetyBackups()
         viewModelScope.launch {
@@ -166,13 +172,24 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
         }
-        // Auto-check for updates if enabled
+        // Auto-check for updates from Firebase Realtime DB and GitHub
         viewModelScope.launch {
             if (userPrefs.autoCheckUpdates.value) {
                 try {
                     updateRepository.checkForUpdates(isManualCheck = false)
                 } catch (e: Exception) {
                     android.util.Log.e("ExpenseViewModel", "Auto update check error: ${e.message}")
+                }
+            }
+        }
+        // Live Realtime DB update listener
+        viewModelScope.launch {
+            remoteUpdateInfo.collect { info ->
+                if (info != null && info.versionCode > currentAppVersionCode) {
+                    val isMandatory = info.isMandatory || (currentAppVersionCode < info.minSupportedVersionCode)
+                    if (isMandatory || userPrefs.autoCheckUpdates.value) {
+                        updateRepository.checkForUpdates(isManualCheck = false)
+                    }
                 }
             }
         }

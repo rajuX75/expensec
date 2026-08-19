@@ -1,0 +1,59 @@
+{
+  "app_version": {
+    "versionCode": 1,
+    "versionName": "1.0.0",
+    "minSupportedVersionCode": 1,
+    "releaseTitle": "v1.0.0 — Initial Official Release",
+    "releaseNotes": "• Clean local-first financial manager with zero balance start\n• Debt & loan (Dhaar) tracker with contact photo avatars\n• Real-time Firebase database synchronization\n• In-app smart updates with auto-download\n• Refined Material 3 user interface",
+    "downloadUrl": "https://github.com/rajuX75/expensec/releases/latest/download/expense-tracker-release.apk",
+    "releaseDate": "2026-08-19",
+    "apkSizeMb": 20.1,
+    "isMandatory": false,
+    "changes": [
+      "Clean, local-first financial manager with 0-balance start",
+      "Dhaar (Debts & Loans) tracker with contact photo avatars & phone picker",
+      "User profile picture upload and custom contact photos",
+      "Real-time Firebase Firestore database synchronization",
+      "Firebase Realtime DB app configuration and smart update system",
+      "Sleek, compact search bar and refined Material 3 UI",
+      "Fixed phone contact selection crash with safe permission-free picker"
+    ]
+  },
+  "app_config": {
+    "appName": "Expense Tracker",
+    "supportEmail": "support@expensex.app",
+    "privacyPolicyUrl": "https://github.com/rajuX75/expensec/blob/main/PRIVACY_POLICY.md",
+    "termsUrl": "https://github.com/rajuX75/expensec/blob/main/TERMS.md",
+    "githubRepoUrl": "https://github.com/rajuX75/expensec",
+    "defaultCurrency": "USD",
+    "maintenanceMode": false,
+    "maintenanceMessage": "We are performing scheduled maintenance. Please check back shortly.",
+    "announcement": {
+      "id": "announcement_v1",
+      "title": "Welcome to Expense Tracker!",
+      "message": "Track your daily expenses, manage debts & loans (Dhaar), and sync across devices in real-time.",
+      "actionUrl": "https://github.com/rajuX75/expensec",
+      "actionText": "Learn More",
+      "type": "INFO",
+      "active": false,
+      "dismissible": true
+    }
+  },
+  "changelog": {
+    "v1_0_0": {
+      "versionCode": 1,
+      "versionName": "v1.0.0",
+      "releaseDate": "August 2026",
+      "title": "Initial Official Release",
+      "changes": [
+        "Clean, local-first financial manager with 0-balance start",
+        "Dhaar (Debts & Loans) tracker with contact photo avatars & phone picker",
+        "User profile picture upload and custom contact photos",
+        "Real-time Firebase Firestore database synchronization",
+        "Firebase Realtime DB app configuration and smart update system",
+        "Sleek, compact search bar and refined Material 3 UI",
+        "Fixed phone contact selection crash with safe permission-free picker"
+      ]
+    }
+  }
+}

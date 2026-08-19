@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "app_version": {
+      ".read": true,
+      ".write": "auth != null && auth.token.admin === true"
+    },
+    "app_config": {
+      ".read": true,
+      ".write": "auth != null && auth.token.admin === true"
+    },
+    "changelog": {
+      ".read": true,
+      ".write": "auth != null && auth.token.admin === true"
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

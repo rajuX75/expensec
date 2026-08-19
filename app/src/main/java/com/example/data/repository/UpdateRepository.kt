@@ -1,12 +1,12 @@
 package com.example.data.repository
 
-import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import androidx.core.content.FileProvider
+import com.example.data.cloud.FirebaseConfigManager
 import com.example.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -23,7 +23,8 @@ import java.util.concurrent.TimeUnit
 
 class UpdateRepository(
     private val context: Context,
-    private val userPrefs: UserPreferencesRepository
+    private val userPrefs: UserPreferencesRepository,
+    private val firebaseConfigManager: FirebaseConfigManager
 ) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -60,10 +61,17 @@ class UpdateRepository(
     }
 
     /**
-     * Complete changelog history of the app
+     * Complete changelog history of the app.
+     * Uses Realtime DB changelog if available, else falls back to default release logs.
      */
     fun getReleaseHistory(): List<VersionReleaseLog> {
-        val currentCode = getCurrentVersionCode()
+        val rtdbLogs = firebaseConfigManager.releaseHistory.value
+        if (rtdbLogs.isNotEmpty()) {
+            return rtdbLogs.map { log ->
+                log.copy(isCurrent = log.versionCode == getCurrentVersionCode())
+            }
+        }
+
         return listOf(
             VersionReleaseLog(
                 versionName = "v1.0.0",
@@ -76,7 +84,7 @@ class UpdateRepository(
                     ChangelogItem(ChangelogType.FEATURE, "Dhaar (Debts & Loans) tracker with contact photo avatars & phone picker"),
                     ChangelogItem(ChangelogType.FEATURE, "User profile picture upload and custom contact photos"),
                     ChangelogItem(ChangelogType.FEATURE, "Real-time Firebase Firestore database synchronization"),
-                    ChangelogItem(ChangelogType.FEATURE, "In-App Update checker with skippable prompts and automatic APK download"),
+                    ChangelogItem(ChangelogType.FEATURE, "Firebase Realtime DB app configuration and smart update system"),
                     ChangelogItem(ChangelogType.IMPROVEMENT, "Sleek, compact search bar and refined Material 3 UI"),
                     ChangelogItem(ChangelogType.FIX, "Fixed phone contact selection crash with safe permission-free picker")
                 )
@@ -85,15 +93,15 @@ class UpdateRepository(
     }
 
     /**
-     * Checks for available updates from GitHub Releases API for rajuX75/expensec.
-     * @param isManualCheck When true, ignores the user's skipped version preference so they can still manually see updates.
+     * Checks for available updates from Firebase Realtime Database primary, with GitHub fallback.
+     * @param isManualCheck When true, ignores user's skipped version preference.
      */
     suspend fun checkForUpdates(isManualCheck: Boolean = false): UpdateCheckState = withContext(Dispatchers.IO) {
         _updateCheckState.value = UpdateCheckState.Checking
 
         try {
             if (isManualCheck) {
-                delay(600)
+                delay(500)
             }
 
             userPrefs.setLastUpdateCheckTime()
@@ -102,14 +110,30 @@ class UpdateRepository(
             val currentName = getCurrentVersionName()
             val skippedCode = userPrefs.skippedUpdateVersion.value
 
-            val updateInfo = fetchRemoteUpdateInfo()
+            // 1. Try Firebase Realtime Database first
+            var updateInfo = firebaseConfigManager.remoteUpdateInfo.value
+
+            // If null from Realtime DB listener, attempt a REST fetch
+            if (updateInfo == null) {
+                firebaseConfigManager.fetchViaRest()
+                delay(300)
+                updateInfo = firebaseConfigManager.remoteUpdateInfo.value
+            }
+
+            // 2. If still null, fallback to GitHub Releases API
+            if (updateInfo == null) {
+                updateInfo = fetchGitHubReleaseUpdateInfo()
+            }
 
             val state = if (updateInfo != null && updateInfo.versionCode > currentCode) {
-                if (!isManualCheck && updateInfo.versionCode == skippedCode) {
+                val isMandatory = updateInfo.isMandatory || (currentCode < updateInfo.minSupportedVersionCode)
+                val effectiveInfo = updateInfo.copy(isMandatory = isMandatory)
+
+                if (!isManualCheck && !isMandatory && effectiveInfo.versionCode == skippedCode) {
                     // User opted to skip this version on auto-check
                     UpdateCheckState.UpToDate(currentName, System.currentTimeMillis())
                 } else {
-                    UpdateCheckState.UpdateAvailable(updateInfo)
+                    UpdateCheckState.UpdateAvailable(effectiveInfo)
                 }
             } else {
                 UpdateCheckState.UpToDate(currentName, System.currentTimeMillis())
@@ -125,9 +149,9 @@ class UpdateRepository(
     }
 
     /**
-     * Fetches update information from the official GitHub repository.
+     * Fetches update information from GitHub repository if Firebase is unreachable.
      */
-    private fun fetchRemoteUpdateInfo(): AppUpdateInfo? {
+    private fun fetchGitHubReleaseUpdateInfo(): AppUpdateInfo? {
         try {
             val request = Request.Builder()
                 .url("https://api.github.com/repos/rajuX75/expensec/releases/latest")
@@ -169,6 +193,7 @@ class UpdateRepository(
                         return AppUpdateInfo(
                             versionCode = parsedCode,
                             versionName = tagName,
+                            minSupportedVersionCode = 1,
                             releaseTitle = releaseTitle,
                             releaseNotes = bodyText.ifBlank { "What's new in $tagName:\n• Performance improvements and bug fixes" },
                             changelog = parseChangelogFromText(bodyText),
@@ -180,11 +205,8 @@ class UpdateRepository(
                     }
                 }
             }
-        } catch (_: Exception) {
-            // Offline or no releases found on remote repository
-        }
+        } catch (_: Exception) {}
 
-        // Return null if no remote update is available (prevents false positive updates)
         return null
     }
 
@@ -296,7 +318,6 @@ class UpdateRepository(
             }
         } catch (e: Exception) {
             _downloadState.value = UpdateDownloadState.Error(e.message ?: "Failed to download update")
-            // Open download link in browser as fallback
             withContext(Dispatchers.Main) {
                 openInBrowser(updateInfo.downloadUrl)
             }
