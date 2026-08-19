@@ -76,6 +76,7 @@ fun SettingsScreen(
     var showResetConfirmDialog by remember { mutableStateOf(false) }
     var showChangelogDialog by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
+    var legalDocToView by remember { mutableStateOf<com.example.data.model.LegalDocType?>(null) }
 
     // Show update dialog when an update is available
     LaunchedEffect(updateCheckState) {
@@ -597,7 +598,59 @@ fun SettingsScreen(
             }
         }
 
-        // ── 9. Data Management & Danger Zone ──────────────────────
+        // ── 9. Legal & Documentation ─────────────────────────────
+        item {
+            SettingsSectionHeader(title = "Legal & Documentation")
+        }
+        item {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SettingsItem(
+                        icon = Icons.Default.Security,
+                        title = "Privacy Policy",
+                        subtitle = "How your financial records and data are protected",
+                        iconTint = Color(0xFF10B981),
+                        onClick = { legalDocToView = com.example.data.model.LegalDocType.PRIVACY_POLICY }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    SettingsItem(
+                        icon = Icons.Default.Description,
+                        title = "Terms of Service",
+                        subtitle = "Personal finance usage agreement and disclaimers",
+                        iconTint = Color(0xFF3B82F6),
+                        onClick = { legalDocToView = com.example.data.model.LegalDocType.TERMS_OF_SERVICE }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    SettingsItem(
+                        icon = Icons.Default.Lock,
+                        title = "Security & Data Protection",
+                        subtitle = "On-device isolation, encryption & Firebase rules",
+                        iconTint = Color(0xFFF59E0B),
+                        onClick = { legalDocToView = com.example.data.model.LegalDocType.SECURITY }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    SettingsItem(
+                        icon = Icons.Default.Info,
+                        title = "About Expense Tracker",
+                        subtitle = "App version details, features, and source repository",
+                        iconTint = Color(0xFF8B5CF6),
+                        onClick = { legalDocToView = com.example.data.model.LegalDocType.ABOUT }
+                    )
+                }
+            }
+        }
+
+        // ── 10. Data Management & Danger Zone ─────────────────────
         item {
             SettingsSectionHeader(title = "Data Management")
         }
@@ -820,6 +873,14 @@ fun SettingsScreen(
                 viewModel.dismissUpdatePrompt()
                 showUpdateDialog = false
             }
+        )
+    }
+
+    // Legal & Documentation Dialog
+    legalDocToView?.let { docType ->
+        com.example.ui.components.LegalDocsDialog(
+            initialDoc = docType,
+            onDismiss = { legalDocToView = null }
         )
     }
 }
