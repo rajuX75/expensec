@@ -1,0 +1,37 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Wallet base body inside 66dp safe zone (x: 24..84, y: 28..80) -->
+    <path
+        android:fillColor="#E6FFFFFF"
+        android:pathData="M30,34 C26.69,34 24,36.69 24,40 L24,72 C24,75.31 26.69,78 30,78 L78,78 C81.31,78 84,75.31 84,72 L84,40 C84,36.69 81.31,34 78,34 L30,34 Z" />
+    <!-- Wallet front flap / card slot dark contrast -->
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M24,48 L84,48 L84,72 C84,75.31 81.31,78 78,78 L30,78 C26.69,78 24,75.31 24,72 Z" />
+    <!-- Wallet badge / clasp on the right -->
+    <path
+        android:fillColor="#065F46"
+        android:pathData="M66,54 L86,54 C87.1,54 88,54.9 88,56 L88,68 C88,69.1 87.1,70 86,70 L66,70 C63.79,70 62,68.21 62,66 L62,58 C62,55.79 63.79,54 66,54 Z" />
+    <!-- Clasp metallic dot -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M70,62m-3,0a3,3 0,1,1 6,0a3,3 0,1,1 -6,0" />
+    <!-- Rising trend arrow / coin on top -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M48,27 L60,27 C61.1,27 62,27.9 62,29 L62,37 C62,38.1 61.1,39 60,39 L48,39 C46.9,39 46,38.1 46,37 L46,29 C46,27.9 46.9,27 48,27 Z" />
+    <!-- Trend indicator line -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M34,67 L44,57 L52,63 L64,51" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,51 L66,51 L66,57 Z" />
+</vector>

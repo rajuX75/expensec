@@ -1,0 +1,6 @@
+{
+  "name": "Expense Tracker",
+  "description": "Smart personal finance and Expense Tracker with multi-account balances, budgets, category analytics, bills & reminders, Dena-Pawna (informal lending/borrowing ledger), and cloud/local backups.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

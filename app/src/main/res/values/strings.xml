@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Expense Tracker</string>
+    <string name="dhaar_feature_title">Debts &amp; Loans</string>
+    <string name="dhaar_gave">Lent / Gave</string>
+    <string name="dhaar_received">Borrowed / Received</string>
+    <string name="dhaar_settlement">Settlement</string>
+    <string name="dhaar_you_will_get">You\'ll Get</string>
+    <string name="dhaar_you_will_pay">You\'ll Pay</string>
+    <string name="dhaar_settled">Settled</string>
+    <string name="dhaar_settle_up">Settle Up</string>
+    <string name="dhaar_add_entry">Add Record</string>
+    <string name="dhaar_new_contact">New Contact</string>
+    <string name="dhaar_all_contacts">All</string>
+    <string name="dhaar_pabo_filter">You\'ll Get</string>
+    <string name="dhaar_debo_filter">You\'ll Pay</string>
+    <string name="dhaar_settled_filter">Settled</string>
+    <string name="dhaar_link_account">Link to Account</string>
+    <string name="dhaar_due_date">Due Date</string>
+</resources>
