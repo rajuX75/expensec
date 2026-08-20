@@ -60,6 +60,57 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `shops` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `uuid` TEXT NOT NULL,
+                `name` TEXT NOT NULL,
+                `phoneNumber` TEXT,
+                `address` TEXT,
+                `note` TEXT,
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `shop_products` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `uuid` TEXT NOT NULL,
+                `name` TEXT NOT NULL,
+                `defaultUnit` TEXT,
+                `defaultPrice` REAL NOT NULL,
+                `isArchived` INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `shop_ledger_entries` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `uuid` TEXT NOT NULL,
+                `shopId` INTEGER NOT NULL,
+                `type` TEXT NOT NULL,
+                `productId` INTEGER,
+                `quantity` REAL,
+                `unitPriceAtPurchase` REAL,
+                `amount` REAL NOT NULL,
+                `date` INTEGER NOT NULL,
+                `note` TEXT,
+                FOREIGN KEY(`shopId`) REFERENCES `shops`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                FOREIGN KEY(`productId`) REFERENCES `shop_products`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_shop_ledger_entries_shopId` ON `shop_ledger_entries` (`shopId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_shop_ledger_entries_productId` ON `shop_ledger_entries` (`productId`)")
+    }
+}
+
 @Database(
     entities = [
         TransactionEntity::class,
@@ -68,9 +119,12 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         BudgetEntity::class,
         BillEntity::class,
         Contact::class,
-        DhaarEntry::class
+        DhaarEntry::class,
+        Shop::class,
+        ShopProduct::class,
+        ShopLedgerEntry::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -82,6 +136,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun billDao(): BillDao
     abstract fun contactDao(): ContactDao
     abstract fun dhaarEntryDao(): DhaarEntryDao
+    abstract fun shopDao(): ShopDao
+    abstract fun shopProductDao(): ShopProductDao
+    abstract fun shopLedgerEntryDao(): ShopLedgerEntryDao
 
     companion object {
         @Volatile
@@ -94,7 +151,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "expense_tracker_db"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .addCallback(DatabaseCallback(scope))
                 .build()
                 INSTANCE = instance

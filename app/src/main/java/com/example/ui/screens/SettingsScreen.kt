@@ -720,43 +720,14 @@ fun SettingsScreen(
 
     // Currency Selector Dialog
     if (showCurrencyDialog) {
-        Dialog(onDismissRequest = { showCurrencyDialog = false }) {
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Select Default Currency", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                    Spacer(Modifier.height(12.dp))
-                    androidx.compose.foundation.lazy.LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        items(AvailableCurrencies) { curr ->
-                            val isSelected = curr.code == currentCurrency
-                            Surface(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable {
-                                    viewModel.setCurrency(curr)
-                                    showCurrencyDialog = false
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(14.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("${curr.name} (${curr.code})", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal))
-                                    Text(curr.symbol, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        CurrencyPickerDialog(
+            currentCurrencyCode = currentCurrency,
+            onCurrencySelected = { curr ->
+                viewModel.setCurrency(curr)
+                showCurrencyDialog = false
+            },
+            onDismiss = { showCurrencyDialog = false }
+        )
     }
 
     // Category Management Dialog
@@ -885,110 +856,4 @@ fun SettingsScreen(
     }
 }
 
-@Composable
-private fun SettingsSectionHeader(title: String) {
-    Text(
-        text = title.uppercase(),
-        style = MaterialTheme.typography.labelMedium.copy(
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        ),
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 4.dp, top = 4.dp)
-    )
-}
-
-@Composable
-fun SettingsSwitchItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    iconTint: Color = Color(0xFF6366F1)
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(iconTint.copy(alpha = 0.12f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = iconTint,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(Modifier.width(14.dp))
-            Column {
-                Text(title, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
-                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Spacer(Modifier.width(8.dp))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-@Composable
-fun SettingsItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    titleColor: Color = Color.Unspecified,
-    iconTint: Color = Color(0xFF6366F1)
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(iconTint.copy(alpha = 0.12f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = iconTint,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(Modifier.width(14.dp))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = if (titleColor != Color.Unspecified) titleColor else MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Icon(
-            Icons.AutoMirrored.Filled.ArrowForwardIos,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.size(14.dp)
-        )
-    }
-}
+// SettingsSectionHeader, SettingsSwitchItem, SettingsItem are defined in SettingsComponents.kt

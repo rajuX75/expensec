@@ -6,17 +6,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.cloud.CloudBackupRepository
 import com.example.data.cloud.CloudBackupResult
-import com.example.data.cloud.CloudConflictException
 import com.example.data.cloud.DriveAuthorizeResult
 import com.example.data.cloud.GoogleAuthManager
 import com.example.data.local.AppDatabase
 import com.example.data.model.*
-import com.example.data.repository.AvailableCurrencies
 import com.example.data.repository.CurrencyInfo
 import com.example.data.repository.ExpenseRepository
 import com.example.data.repository.ImportExportRepository
 import com.example.data.repository.UserPreferencesRepository
-import com.example.data.work.BackupWorker
 import com.example.ui.components.BarChartEntry
 import com.example.ui.components.CategoryTrendMeta
 import com.example.ui.components.ChartCategoryData
@@ -24,9 +21,7 @@ import com.example.ui.components.MonthlyCategoryTrendEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
-import java.text.SimpleDateFormat
 import java.util.*
 
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
@@ -98,29 +93,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val autoBackupFrequency = userPrefs.autoBackupFrequency
     val autoBackupWifiOnly = userPrefs.autoBackupWifiOnly
 
-    // Cloud Operation State
-    private val _isCloudSyncing = MutableStateFlow(false)
-    val isCloudSyncing = _isCloudSyncing.asStateFlow()
-
-    private val _cloudSyncMessage = MutableStateFlow<String?>(null)
-    val cloudSyncMessage = _cloudSyncMessage.asStateFlow()
-
-    private val _cloudConflict = MutableStateFlow<CloudConflictException?>(null)
-    val cloudConflict = _cloudConflict.asStateFlow()
-
-    private val _safetyBackups = MutableStateFlow<List<File>>(emptyList())
-    val safetyBackups = _safetyBackups.asStateFlow()
-
-    // Update States & Preferences
-    val autoCheckUpdates = userPrefs.autoCheckUpdates
-    val skippedUpdateVersion = userPrefs.skippedUpdateVersion
-    val lastUpdateCheckTime = userPrefs.lastUpdateCheckTime
-    val updateCheckState = updateRepository.updateCheckState
-    val updateDownloadState = updateRepository.downloadState
-    val currentAppVersionName = updateRepository.getCurrentVersionName()
-    val currentAppVersionCode = updateRepository.getCurrentVersionCode()
-    val releaseHistory = updateRepository.getReleaseHistory()
-
     // Pin Lock Session State (true when unlocked during current run)
     private val _isAppUnlocked = MutableStateFlow(false)
     val isAppUnlocked = _isAppUnlocked.asStateFlow()
@@ -130,12 +102,168 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val remoteUpdateInfo = firebaseConfigManager.remoteUpdateInfo
     val isFirebaseConfigConnected = firebaseConfigManager.isConnected
 
+    // Repository Flows
+    val allTransactions = repository.allTransactions.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    val allCategories = repository.allCategories.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    val allAccounts = repository.allAccounts.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    val allBudgets = repository.allBudgets.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    val allBills = repository.allBills.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
+    )
+
+    // Feature Delegates
+    val analyticsDelegate = AnalyticsDelegate(
+        viewModelScope = viewModelScope,
+        allTransactions = allTransactions,
+        allCategories = allCategories,
+        allAccounts = allAccounts,
+        allBudgets = allBudgets
+    )
+
+    val cloudDelegate = CloudDelegate(
+        application = application,
+        viewModelScope = viewModelScope,
+        importExportRepo = importExportRepo,
+        cloudBackupRepo = cloudBackupRepo,
+        googleAuthManager = googleAuthManager,
+        firestoreSyncManager = firestoreSyncManager,
+        userPrefs = userPrefs
+    )
+
+    val dhaarDelegate = DhaarDelegate(
+        viewModelScope = viewModelScope,
+        database = database,
+        dhaarRepository = dhaarRepository,
+        googleAuthManager = googleAuthManager,
+        firestoreSyncManager = firestoreSyncManager
+    )
+    
+    val shopBakiRepository = com.example.data.repository.ShopBakiRepository(
+        shopDao = database.shopDao(),
+        shopProductDao = database.shopProductDao(),
+        shopLedgerEntryDao = database.shopLedgerEntryDao()
+    )
+
+    val shopBakiDelegate = ShopBakiDelegate(
+        viewModelScope = viewModelScope,
+        shopBakiRepository = shopBakiRepository,
+        googleAuthManager = googleAuthManager,
+        firestoreSyncManager = firestoreSyncManager
+    )
+
+    val updateDelegate = UpdateDelegate(
+        viewModelScope = viewModelScope,
+        updateRepository = updateRepository,
+        userPrefs = userPrefs
+    )
+
+    // Forwarding Analytics Properties & Functions
+    val financialSummary: StateFlow<FinancialSummary> get() = analyticsDelegate.financialSummary
+    val accountsWithBalances: StateFlow<List<AccountWithBalance>> get() = analyticsDelegate.accountsWithBalances
+    val categorySpendingData: StateFlow<List<ChartCategoryData>> get() = analyticsDelegate.categorySpendingData
+    val monthlyTrendsData: StateFlow<List<BarChartEntry>> get() = analyticsDelegate.monthlyTrendsData
+    val monthlyCategoryTrendsData: StateFlow<Pair<List<MonthlyCategoryTrendEntry>, List<CategoryTrendMeta>>> get() = analyticsDelegate.monthlyCategoryTrendsData
+    val topMerchants: StateFlow<List<MerchantSpending>> get() = analyticsDelegate.topMerchants
+    val budgetStatuses: StateFlow<List<BudgetStatus>> get() = analyticsDelegate.budgetStatuses
+    val analyticsPeriod: StateFlow<String> get() = analyticsDelegate.analyticsPeriod
+    fun setAnalyticsPeriod(period: String) = analyticsDelegate.setAnalyticsPeriod(period)
+    fun suggestCategoryForMerchant(merchant: String): CategoryEntity? = analyticsDelegate.suggestCategoryForMerchant(merchant)
+    fun computeTotalBalance(accounts: List<AccountEntity>, transactions: List<TransactionEntity>): Double = analyticsDelegate.computeTotalBalance(accounts, transactions)
+
+    // Forwarding Cloud Properties & Functions
+    val isCloudSyncing: StateFlow<Boolean> get() = cloudDelegate.isCloudSyncing
+    val cloudSyncMessage: StateFlow<String?> get() = cloudDelegate.cloudSyncMessage
+    val cloudConflict get() = cloudDelegate.cloudConflict
+    val safetyBackups: StateFlow<List<File>> get() = cloudDelegate.safetyBackups
+    fun loadSafetyBackups() = cloudDelegate.loadSafetyBackups()
+    suspend fun exportBackupToJson(): String = cloudDelegate.exportBackupToJson()
+    suspend fun exportTransactionsToCsv(): String = cloudDelegate.exportTransactionsToCsv()
+    fun parseBackupJson(jsonString: String): Result<AppBackup> = cloudDelegate.parseBackupJson(jsonString)
+    fun importBackupData(backup: AppBackup, mode: ImportMode, onResult: (Result<ImportResult>) -> Unit) =
+        cloudDelegate.importBackupData(backup, mode, onResult)
+    fun signInGoogle(activityContext: Context, webClientId: String = "", onResult: (Result<String>) -> Unit) =
+        cloudDelegate.signInGoogle(activityContext, webClientId, onResult)
+    fun authorizeDrive(activityContext: Context, onResult: (DriveAuthorizeResult) -> Unit) =
+        cloudDelegate.authorizeDrive(activityContext, onResult)
+    fun signOutGoogle(onComplete: () -> Unit) = cloudDelegate.signOutGoogle(onComplete)
+    fun backupToCloud(forceOverwrite: Boolean = false, onResult: (Result<CloudBackupResult>) -> Unit) =
+        cloudDelegate.backupToCloud(forceOverwrite, onResult)
+    fun restoreFromCloud(mode: ImportMode, onResult: (Result<ImportResult>) -> Unit) =
+        cloudDelegate.restoreFromCloud(mode, onResult)
+    fun fetchCloudBackupPreview(onResult: (Result<AppBackup>) -> Unit) =
+        cloudDelegate.fetchCloudBackupPreview(onResult)
+    fun dismissCloudConflict() = cloudDelegate.dismissCloudConflict()
+    fun syncWithFirestore(onResult: (Result<Unit>) -> Unit = {}) = cloudDelegate.syncWithFirestore(onResult)
+    fun setAutoBackupSettings(frequency: String, wifiOnly: Boolean) = cloudDelegate.setAutoBackupSettings(frequency, wifiOnly)
+
+    // Forwarding Dhaar Properties & Functions
+    val allContacts: StateFlow<List<Contact>> get() = dhaarDelegate.allContacts
+    val allDhaarEntries: StateFlow<List<DhaarEntry>> get() = dhaarDelegate.allDhaarEntries
+    val contactsWithBalances: StateFlow<List<ContactWithBalance>> get() = dhaarDelegate.contactsWithBalances
+    val dhaarDashboardSummary: StateFlow<DhaarDashboardSummary> get() = dhaarDelegate.dhaarDashboardSummary
+    val upcomingDhaarReminders: StateFlow<List<DhaarReminderItem>> get() = dhaarDelegate.upcomingDhaarReminders
+    fun addContact(contact: Contact, onCreated: (Long) -> Unit = {}) = dhaarDelegate.addContact(contact, onCreated)
+    fun updateContact(contact: Contact) = dhaarDelegate.updateContact(contact)
+    fun deleteContact(contact: Contact, deleteEntries: Boolean = false, onResult: (Result<Unit>) -> Unit = {}) =
+        dhaarDelegate.deleteContact(contact, deleteEntries, onResult)
+    fun addDhaarEntry(entry: DhaarEntry, linkToAccount: Boolean = false, accountName: String? = null, onCreated: (Long) -> Unit = {}) =
+        dhaarDelegate.addDhaarEntry(entry, linkToAccount, accountName, onCreated)
+    fun updateDhaarEntry(entry: DhaarEntry) = dhaarDelegate.updateDhaarEntry(entry)
+    fun deleteDhaarEntry(entry: DhaarEntry) = dhaarDelegate.deleteDhaarEntry(entry)
+    fun deleteDhaarEntryById(id: Long) = dhaarDelegate.deleteDhaarEntryById(id)
+    fun getEntriesForContact(contactId: Long): Flow<List<DhaarEntry>> = dhaarDelegate.getEntriesForContact(contactId)
+    fun getContactById(contactId: Long): Flow<Contact?> = dhaarDelegate.getContactById(contactId)
+
+    // Forwarding ShopBaki Properties & Functions
+    val allShops: StateFlow<List<Shop>> get() = shopBakiDelegate.allShops
+    val activeShopProducts: StateFlow<List<ShopProduct>> get() = shopBakiDelegate.activeProducts
+    val shopsWithBalances: StateFlow<List<ShopWithBalance>> get() = shopBakiDelegate.shopsWithBalances
+    
+    fun addShop(shop: Shop, onCreated: (Long) -> Unit = {}) = shopBakiDelegate.addShop(shop, onCreated)
+    fun updateShop(shop: Shop) = shopBakiDelegate.updateShop(shop)
+    fun deleteShop(shop: Shop, onResult: (Result<Unit>) -> Unit = {}) = shopBakiDelegate.deleteShop(shop, onResult)
+    
+    fun addShopProduct(product: ShopProduct, onCreated: (Long) -> Unit = {}) = shopBakiDelegate.addProduct(product, onCreated)
+    fun updateShopProduct(product: ShopProduct) = shopBakiDelegate.updateProduct(product)
+    fun deleteShopProduct(product: ShopProduct, onResult: (Result<Unit>) -> Unit = {}) = shopBakiDelegate.deleteProduct(product, onResult)
+    
+    fun addShopLedgerEntry(entry: ShopLedgerEntry, onCreated: (Long) -> Unit = {}) = shopBakiDelegate.addLedgerEntry(entry, onCreated)
+    fun deleteShopLedgerEntry(entry: ShopLedgerEntry) = shopBakiDelegate.deleteLedgerEntry(entry)
+    fun getShopTimeline(shopId: Long): Flow<List<ShopTimelineItem>> = shopBakiDelegate.getShopTimeline(shopId)
+    fun getShopById(shopId: Long): Flow<Shop?> = shopBakiDelegate.getShopById(shopId)
+
+    // Forwarding Update Properties & Functions
+    val autoCheckUpdates get() = updateDelegate.autoCheckUpdates
+    val skippedUpdateVersion get() = updateDelegate.skippedUpdateVersion
+    val lastUpdateCheckTime get() = updateDelegate.lastUpdateCheckTime
+    val updateCheckState get() = updateDelegate.updateCheckState
+    val updateDownloadState get() = updateDelegate.updateDownloadState
+    val currentAppVersionName get() = updateDelegate.currentAppVersionName
+    val currentAppVersionCode get() = updateDelegate.currentAppVersionCode
+    val releaseHistory get() = updateDelegate.releaseHistory
+    fun checkForUpdates(isManual: Boolean = false) = updateDelegate.checkForUpdates(isManual)
+    fun skipUpdateVersion(versionCode: Int) = updateDelegate.skipUpdateVersion(versionCode)
+    fun dismissUpdatePrompt() = updateDelegate.dismissUpdatePrompt()
+    fun downloadAndInstallUpdate(updateInfo: AppUpdateInfo) = updateDelegate.downloadAndInstallUpdate(updateInfo)
+    fun setAutoCheckUpdates(enabled: Boolean) = updateDelegate.setAutoCheckUpdates(enabled)
+
     init {
         loadSafetyBackups()
         viewModelScope.launch {
             googleAuthManager.currentUser.collect { user ->
                 if (user != null) {
-                    // Automatically populate profile info from Google account
                     val googleName = user.displayName?.trim()
                     val googleEmail = user.email?.trim()
                     val googlePhoto = user.photoUrl?.toString()
@@ -172,7 +300,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
         }
-        // Auto-check for updates from Firebase Realtime DB and GitHub
         viewModelScope.launch {
             if (userPrefs.autoCheckUpdates.value) {
                 try {
@@ -182,7 +309,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
         }
-        // Live Realtime DB update listener
         viewModelScope.launch {
             remoteUpdateInfo.collect { info ->
                 if (info != null && info.versionCode > currentAppVersionCode) {
@@ -203,169 +329,14 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         return userPrefs.verifyPin(pin)
     }
 
-    fun loadSafetyBackups() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _safetyBackups.value = importExportRepo.listSafetyBackups()
-        }
-    }
-
-    // Data Portability Actions
-    suspend fun exportBackupToJson(): String {
-        return importExportRepo.exportBackupToJson()
-    }
-
-    suspend fun exportTransactionsToCsv(): String {
-        return importExportRepo.exportTransactionsToCsv()
-    }
-
-    fun parseBackupJson(jsonString: String): Result<AppBackup> {
-        return importExportRepo.parseBackupJson(jsonString)
-    }
-
-    fun importBackupData(
-        backup: AppBackup,
-        mode: ImportMode,
-        onResult: (Result<ImportResult>) -> Unit
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = importExportRepo.importBackup(backup, mode)
-            loadSafetyBackups()
-            onResult(result)
-        }
-    }
-
-    // Cloud Backup Actions
-    fun signInGoogle(activityContext: Context, webClientId: String = "", onResult: (Result<String>) -> Unit) {
-        viewModelScope.launch {
-            _isCloudSyncing.value = true
-            _cloudSyncMessage.value = "Signing in to Google..."
-            val result = googleAuthManager.signIn(activityContext, webClientId)
-            _isCloudSyncing.value = false
-            _cloudSyncMessage.value = null
-            onResult(result)
-        }
-    }
-
-    /**
-     * Obtains a Google Drive access token (drive.appdata scope). On first use this may return
-     * [DriveAuthorizeResult.ConsentRequired] and the UI must launch the returned IntentSender
-     * before calling this again to receive [DriveAuthorizeResult.Granted].
-     */
-    fun authorizeDrive(activityContext: Context, onResult: (DriveAuthorizeResult) -> Unit) {
-        viewModelScope.launch {
-            val result = googleAuthManager.authorizeDrive(activityContext)
-            onResult(result)
-        }
-    }
-
-    fun signOutGoogle(onComplete: () -> Unit) {
-        viewModelScope.launch {
-            googleAuthManager.signOut()
-            BackupWorker.schedule(getApplication(), "OFF", true)
-            onComplete()
-        }
-    }
-
-    fun backupToCloud(
-        forceOverwrite: Boolean = false,
-        onResult: (Result<CloudBackupResult>) -> Unit
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isCloudSyncing.value = true
-            _cloudSyncMessage.value = "Backing up to Google Drive..."
-            val result = cloudBackupRepo.backupToCloud(forceOverwrite = forceOverwrite)
-            _isCloudSyncing.value = false
-            _cloudSyncMessage.value = null
-
-            val error = result.exceptionOrNull()
-            if (error is CloudConflictException) {
-                _cloudConflict.value = error
-            }
-
-            onResult(result)
-        }
-    }
-
-    fun restoreFromCloud(
-        mode: ImportMode,
-        onResult: (Result<ImportResult>) -> Unit
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isCloudSyncing.value = true
-            _cloudSyncMessage.value = "Restoring from Google Drive..."
-            val result = cloudBackupRepo.restoreFromCloud(mode = mode)
-            _isCloudSyncing.value = false
-            _cloudSyncMessage.value = null
-            loadSafetyBackups()
-            onResult(result)
-        }
-    }
-
-    fun fetchCloudBackupPreview(onResult: (Result<AppBackup>) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isCloudSyncing.value = true
-            _cloudSyncMessage.value = "Checking cloud backup..."
-            val result = cloudBackupRepo.fetchBackupPreviewFromCloud()
-            _isCloudSyncing.value = false
-            _cloudSyncMessage.value = null
-            onResult(result)
-        }
-    }
-
-    fun dismissCloudConflict() {
-        _cloudConflict.value = null
-    }
-
-    fun syncWithFirestore(onResult: (Result<Unit>) -> Unit = {}) {
-        val uid = googleAuthManager.currentUserId
-        if (uid.isNullOrBlank()) {
-            onResult(Result.failure(Exception("Please sign in with Google to sync with Firebase.")))
-            return
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val result = firestoreSyncManager.syncAll(uid)
-                onResult(result)
-            } catch (e: Exception) {
-                onResult(Result.failure(e))
-            }
-        }
-    }
-
-    fun setAutoBackupSettings(frequency: String, wifiOnly: Boolean) {
-        userPrefs.setAutoBackupSettings(frequency, wifiOnly)
-        BackupWorker.schedule(getApplication(), frequency, wifiOnly)
-    }
-
-    // Repository Flows
-    val allTransactions = repository.allTransactions.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
-
-    val allCategories = repository.allCategories.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
-
-    val allAccounts = repository.allAccounts.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
-
-    val allBudgets = repository.allBudgets.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
-
-    val allBills = repository.allBills.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
-
     // Filter & Search States
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
-    private val _filterType = MutableStateFlow("ALL") // ALL, EXPENSE, INCOME, TRANSFER
+    private val _filterType = MutableStateFlow("ALL")
     val filterType = _filterType.asStateFlow()
 
-    private val _filterTimeRange = MutableStateFlow("ALL") // ALL, TODAY, THIS_WEEK, THIS_MONTH, LAST_MONTH, THIS_YEAR
+    private val _filterTimeRange = MutableStateFlow("ALL")
     val filterTimeRange = _filterTimeRange.asStateFlow()
 
     private val _filterCategoryId = MutableStateFlow<Long?>(null)
@@ -402,7 +373,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         _filterAccountId.value = null
     }
 
-    // Filter helper class
     private data class FilterCriteria(
         val query: String,
         val type: String,
@@ -421,7 +391,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         FilterCriteria(query, type, timeRange, catId, accId)
     }
 
-    // Filtered Transactions Flow
     val filteredTransactions: StateFlow<List<TransactionEntity>> = combine(
         allTransactions,
         _filterCriteria
@@ -429,23 +398,16 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val now = Calendar.getInstance()
 
         transactions.filter { tx ->
-            // Query filter
             val matchesQuery = filter.query.isBlank() ||
                 tx.merchant.contains(filter.query, ignoreCase = true) ||
                 tx.note.contains(filter.query, ignoreCase = true) ||
                 tx.categoryName.contains(filter.query, ignoreCase = true) ||
                 tx.tags.contains(filter.query, ignoreCase = true)
 
-            // Type filter
             val matchesType = filter.type == "ALL" || tx.type.equals(filter.type, ignoreCase = true)
-
-            // Category filter
             val matchesCategory = filter.categoryId == null || tx.categoryId == filter.categoryId
-
-            // Account filter
             val matchesAccount = filter.accountId == null || tx.accountId == filter.accountId || tx.toAccountId == filter.accountId
 
-            // Time Range filter
             val matchesTime = when (filter.timeRange) {
                 "TODAY" -> {
                     val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
@@ -480,356 +442,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             matchesQuery && matchesType && matchesCategory && matchesAccount && matchesTime
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // Net Financial Overview Metrics
-    data class FinancialSummary(
-        val totalBalance: Double,
-        val thisMonthIncome: Double,
-        val thisMonthExpense: Double,
-        val netSavings: Double,
-        val savingsRate: Double
-    )
-
-    val financialSummary: StateFlow<FinancialSummary> = combine(
-        allTransactions,
-        allAccounts
-    ) { transactions, accounts ->
-        val now = Calendar.getInstance()
-        val currentYear = now.get(Calendar.YEAR)
-        val currentMonth = now.get(Calendar.MONTH)
-
-        var totalIncomeMonth = 0.0
-        var totalExpenseMonth = 0.0
-
-        transactions.forEach { tx ->
-            val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-            val isCurrentMonth = txCal.get(Calendar.YEAR) == currentYear && txCal.get(Calendar.MONTH) == currentMonth
-
-            if (isCurrentMonth) {
-                if (tx.type.equals("INCOME", ignoreCase = true)) {
-                    totalIncomeMonth += tx.amount
-                } else if (tx.type.equals("EXPENSE", ignoreCase = true)) {
-                    totalExpenseMonth += tx.amount
-                }
-            }
-        }
-
-        // Compute total live balance across accounts
-        val totalLiveBalance = computeTotalBalance(accounts, transactions)
-
-        val netSavings = totalIncomeMonth - totalExpenseMonth
-        val savingsRate = if (totalIncomeMonth > 0) ((netSavings / totalIncomeMonth) * 100).coerceAtLeast(0.0) else 0.0
-
-        FinancialSummary(
-            totalBalance = totalLiveBalance,
-            thisMonthIncome = totalIncomeMonth,
-            thisMonthExpense = totalExpenseMonth,
-            netSavings = netSavings,
-            savingsRate = savingsRate
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FinancialSummary(0.0, 0.0, 0.0, 0.0, 0.0))
-
-    // Dynamic Account Balances (Account + Transactions)
-    data class AccountWithBalance(
-        val account: AccountEntity,
-        val liveBalance: Double,
-        val transactionCount: Int
-    )
-
-    val accountsWithBalances: StateFlow<List<AccountWithBalance>> = combine(
-        allAccounts,
-        allTransactions
-    ) { accounts, transactions ->
-        accounts.map { acc ->
-            var bal = acc.balance
-            var count = 0
-            transactions.forEach { tx ->
-                if (tx.accountId == acc.id) {
-                    count++
-                    when (tx.type.uppercase()) {
-                        "INCOME" -> bal += tx.amount
-                        "EXPENSE" -> bal -= tx.amount
-                        "TRANSFER" -> bal -= tx.amount
-                    }
-                } else if (tx.toAccountId == acc.id && tx.type.equals("TRANSFER", ignoreCase = true)) {
-                    count++
-                    bal += tx.amount
-                }
-            }
-            AccountWithBalance(account = acc, liveBalance = bal, transactionCount = count)
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // Category Spending Analytics (for selected period)
-    private val _analyticsPeriod = MutableStateFlow("THIS_MONTH") // THIS_MONTH, LAST_MONTH, THIS_YEAR, ALL
-    val analyticsPeriod = _analyticsPeriod.asStateFlow()
-
-    fun setAnalyticsPeriod(period: String) {
-        _analyticsPeriod.value = period
-    }
-
-    val categorySpendingData: StateFlow<List<ChartCategoryData>> = combine(
-        allTransactions,
-        _analyticsPeriod,
-        allCategories
-    ) { transactions, period, categories ->
-        val now = Calendar.getInstance()
-        val filtered = transactions.filter { tx ->
-            if (!tx.type.equals("EXPENSE", ignoreCase = true)) return@filter false
-            val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-            when (period) {
-                "THIS_MONTH" -> txCal.get(Calendar.YEAR) == now.get(Calendar.YEAR) && txCal.get(Calendar.MONTH) == now.get(Calendar.MONTH)
-                "LAST_MONTH" -> {
-                    val lastM = Calendar.getInstance().apply { add(Calendar.MONTH, -1) }
-                    txCal.get(Calendar.YEAR) == lastM.get(Calendar.YEAR) && txCal.get(Calendar.MONTH) == lastM.get(Calendar.MONTH)
-                }
-                "THIS_YEAR" -> txCal.get(Calendar.YEAR) == now.get(Calendar.YEAR)
-                else -> true
-            }
-        }
-
-        val totalSpent = filtered.sumOf { it.amount }
-        val categoryMap = mutableMapOf<String, Double>()
-        val categoryInfoMap = mutableMapOf<String, Pair<String, String>>() // Name -> (icon, color)
-
-        filtered.forEach { tx ->
-            val name = tx.categoryName.ifBlank { "Other" }
-            categoryMap[name] = (categoryMap[name] ?: 0.0) + tx.amount
-            if (!categoryInfoMap.containsKey(name)) {
-                categoryInfoMap[name] = Pair(tx.categoryIcon, tx.categoryColorHex)
-            }
-        }
-
-        categoryMap.entries.map { (name, amount) ->
-            val info = categoryInfoMap[name]
-            val catEntity = categories.find { it.name.equals(name, ignoreCase = true) }
-            val colorHex = catEntity?.colorHex ?: info?.second ?: "#64748B"
-            val iconName = catEntity?.iconName ?: info?.first ?: "category"
-            val percentage = if (totalSpent > 0) ((amount / totalSpent) * 100).toFloat() else 0f
-
-            ChartCategoryData(
-                name = name,
-                amount = amount,
-                percentage = percentage,
-                colorHex = colorHex,
-                iconName = iconName
-            )
-        }.sortedByDescending { it.amount }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // Monthly Trend Chart Data (Last 6 Months)
-    val monthlyTrendsData: StateFlow<List<BarChartEntry>> = allTransactions.map { transactions ->
-        val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
-        val entries = mutableListOf<BarChartEntry>()
-
-        for (i in 5 downTo 0) {
-            val cal = Calendar.getInstance().apply {
-                add(Calendar.MONTH, -i)
-            }
-            val targetYear = cal.get(Calendar.YEAR)
-            val targetMonth = cal.get(Calendar.MONTH)
-            val label = monthFormat.format(cal.time)
-
-            var expenseSum = 0.0
-            var incomeSum = 0.0
-
-            transactions.forEach { tx ->
-                val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-                if (txCal.get(Calendar.YEAR) == targetYear && txCal.get(Calendar.MONTH) == targetMonth) {
-                    if (tx.type.equals("EXPENSE", ignoreCase = true)) {
-                        expenseSum += tx.amount
-                    } else if (tx.type.equals("INCOME", ignoreCase = true)) {
-                        incomeSum += tx.amount
-                    }
-                }
-            }
-
-            entries.add(BarChartEntry(label = label, expense = expenseSum, income = incomeSum))
-        }
-
-        entries
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // Monthly Category Trends Data (Recharts style breakdown by category across last 6 months)
-    val monthlyCategoryTrendsData: StateFlow<Pair<List<MonthlyCategoryTrendEntry>, List<CategoryTrendMeta>>> = combine(
-        allTransactions,
-        allCategories
-    ) { transactions, categories ->
-        val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
-        val entries = mutableListOf<MonthlyCategoryTrendEntry>()
-        val categoryTotals = mutableMapOf<String, Double>()
-        val categoryInfo = mutableMapOf<String, Pair<String, String>>() // Name -> (icon, color)
-
-        categories.forEach { cat ->
-            categoryInfo[cat.name] = Pair(cat.iconName, cat.colorHex)
-        }
-
-        for (i in 5 downTo 0) {
-            val cal = Calendar.getInstance().apply {
-                add(Calendar.MONTH, -i)
-            }
-            val targetYear = cal.get(Calendar.YEAR)
-            val targetMonth = cal.get(Calendar.MONTH)
-            val label = monthFormat.format(cal.time)
-
-            val monthCategoryMap = mutableMapOf<String, Double>()
-            var monthTotal = 0.0
-
-            transactions.forEach { tx ->
-                val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-                if (txCal.get(Calendar.YEAR) == targetYear && txCal.get(Calendar.MONTH) == targetMonth) {
-                    if (tx.type.equals("EXPENSE", ignoreCase = true)) {
-                        val catName = tx.categoryName.ifBlank { "Other" }
-                        monthCategoryMap[catName] = (monthCategoryMap[catName] ?: 0.0) + tx.amount
-                        categoryTotals[catName] = (categoryTotals[catName] ?: 0.0) + tx.amount
-                        monthTotal += tx.amount
-
-                        if (!categoryInfo.containsKey(catName)) {
-                            categoryInfo[catName] = Pair(tx.categoryIcon, tx.categoryColorHex)
-                        }
-                    }
-                }
-            }
-
-            entries.add(
-                MonthlyCategoryTrendEntry(
-                    monthLabel = label,
-                    year = targetYear,
-                    month = targetMonth,
-                    totalExpense = monthTotal,
-                    categoryAmounts = monthCategoryMap
-                )
-            )
-        }
-
-        val metaList = categoryTotals.entries.map { (catName, total) ->
-            val info = categoryInfo[catName]
-            val catEntity = categories.find { it.name.equals(catName, ignoreCase = true) }
-            CategoryTrendMeta(
-                name = catName,
-                colorHex = catEntity?.colorHex ?: info?.second ?: "#64748B",
-                iconName = catEntity?.iconName ?: info?.first ?: "category",
-                totalAcrossMonths = total
-            )
-        }.sortedByDescending { it.totalAcrossMonths }
-
-        Pair(entries, metaList)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Pair(emptyList(), emptyList()))
-
-    // Top Merchants / Vendors
-    data class MerchantSpending(val merchant: String, val amount: Double, val count: Int)
-    val topMerchants: StateFlow<List<MerchantSpending>> = allTransactions.map { transactions ->
-        val merchantMap = mutableMapOf<String, Pair<Double, Int>>()
-        transactions.filter { it.type.equals("EXPENSE", ignoreCase = true) && it.merchant.isNotBlank() }
-            .forEach { tx ->
-                val current = merchantMap[tx.merchant] ?: Pair(0.0, 0)
-                merchantMap[tx.merchant] = Pair(current.first + tx.amount, current.second + 1)
-            }
-        merchantMap.entries.map { (merchant, data) ->
-            MerchantSpending(merchant = merchant, amount = data.first, count = data.second)
-        }.sortedByDescending { it.amount }.take(5)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // Budget Status Overview
-    data class BudgetStatus(
-        val budget: BudgetEntity,
-        val spentAmount: Double,
-        val remainingAmount: Double,
-        val percentage: Float,
-        val isOverBudget: Boolean,
-        val isNearLimit: Boolean
-    )
-
-    val budgetStatuses: StateFlow<List<BudgetStatus>> = combine(
-        allBudgets,
-        allTransactions
-    ) { budgets, transactions ->
-        val now = Calendar.getInstance()
-        val currentYear = now.get(Calendar.YEAR)
-        val currentMonth = now.get(Calendar.MONTH)
-
-        budgets.map { budget ->
-            val spent = transactions.filter { tx ->
-                if (!tx.type.equals("EXPENSE", ignoreCase = true)) return@filter false
-                val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-                val isInPeriod = txCal.get(Calendar.YEAR) == currentYear && txCal.get(Calendar.MONTH) == currentMonth
-
-                if (!isInPeriod) return@filter false
-
-                if (budget.categoryId == null) {
-                    true // Overall budget
-                } else {
-                    tx.categoryId == budget.categoryId || tx.categoryName.equals(budget.categoryName, ignoreCase = true)
-                }
-            }.sumOf { it.amount }
-
-            val remaining = budget.amountLimit - spent
-            val percentage = if (budget.amountLimit > 0) ((spent / budget.amountLimit) * 100).toFloat() else 0f
-            val isOver = spent > budget.amountLimit
-            val isNear = percentage >= budget.alertThresholdPercent && !isOver
-
-            BudgetStatus(
-                budget = budget,
-                spentAmount = spent,
-                remainingAmount = remaining,
-                percentage = percentage,
-                isOverBudget = isOver,
-                isNearLimit = isNear
-            )
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    // Auto-Categorization Helper from Merchant Name
-    fun suggestCategoryForMerchant(merchant: String): CategoryEntity? {
-        val clean = merchant.trim().lowercase()
-        val categories = allCategories.value
-
-        return when {
-            clean.contains("food") || clean.contains("restaurant") || clean.contains("cafe") ||
-            clean.contains("starbucks") || clean.contains("mcdonald") || clean.contains("burger") ||
-            clean.contains("pizza") || clean.contains("ramen") || clean.contains("chipotle") -> {
-                categories.find { it.name.contains("Food", ignoreCase = true) }
-            }
-            clean.contains("grocery") || clean.contains("market") || clean.contains("walmart") ||
-            clean.contains("whole foods") || clean.contains("trader joe") || clean.contains("kroger") ||
-            clean.contains("target") || clean.contains("supermarket") -> {
-                categories.find { it.name.contains("Groceries", ignoreCase = true) }
-            }
-            clean.contains("uber") || clean.contains("lyft") || clean.contains("gas") ||
-            clean.contains("shell") || clean.contains("chevron") || clean.contains("transit") ||
-            clean.contains("subway") || clean.contains("train") || clean.contains("airline") -> {
-                categories.find { it.name.contains("Transport", ignoreCase = true) }
-            }
-            clean.contains("netflix") || clean.contains("spotify") || clean.contains("youtube") ||
-            clean.contains("apple") || clean.contains("hulu") || clean.contains("disney") ||
-            clean.contains("patreon") || clean.contains("subscription") -> {
-                categories.find { it.name.contains("Subscription", ignoreCase = true) }
-            }
-            clean.contains("rent") || clean.contains("apartment") || clean.contains("mortgage") ||
-            clean.contains("housing") -> {
-                categories.find { it.name.contains("Housing", ignoreCase = true) }
-            }
-            clean.contains("electric") || clean.contains("power") || clean.contains("water") ||
-            clean.contains("internet") || clean.contains("wifi") || clean.contains("verizon") ||
-            clean.contains("at&t") || clean.contains("t-mobile") -> {
-                categories.find { it.name.contains("Utilities", ignoreCase = true) }
-            }
-            clean.contains("amazon") || clean.contains("ebay") || clean.contains("zara") ||
-            clean.contains("nike") || clean.contains("h&m") || clean.contains("clothing") ||
-            clean.contains("mall") -> {
-                categories.find { it.name.contains("Shopping", ignoreCase = true) }
-            }
-            clean.contains("pharmacy") || clean.contains("cvs") || clean.contains("walgreens") ||
-            clean.contains("doctor") || clean.contains("dental") || clean.contains("hospital") -> {
-                categories.find { it.name.contains("Health", ignoreCase = true) }
-            }
-            clean.contains("salary") || clean.contains("payroll") || clean.contains("wage") ||
-            clean.contains("bonus") -> {
-                categories.find { it.name.contains("Salary", ignoreCase = true) || it.name.contains("Income", ignoreCase = true) }
-            }
-            else -> null
-        }
-    }
 
     // Repository Mutations
     fun addTransaction(transaction: TransactionEntity) {
@@ -1013,7 +625,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    // Transfer Funds between accounts
     fun transferFunds(
         fromAccount: AccountEntity,
         toAccount: AccountEntity,
@@ -1058,7 +669,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         userPrefs.setPinLock(enabled, pin)
     }
 
-    // Profile settings
     fun setDisplayName(name: String) {
         userPrefs.setDisplayName(name)
     }
@@ -1071,7 +681,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         userPrefs.setProfilePictureUri(uri)
     }
 
-    // Notification settings
     fun setDueRemindersEnabled(enabled: Boolean) {
         userPrefs.setDueRemindersEnabled(enabled)
     }
@@ -1080,7 +689,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         userPrefs.setBudgetAlertsEnabled(enabled)
     }
 
-    // Display & Format settings
     fun setDecimalPlaces(places: Int) {
         userPrefs.setDecimalPlaces(places)
     }
@@ -1093,7 +701,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         userPrefs.setDateFormat(format)
     }
 
-    // App Behavior settings
     fun setAutoCategorize(enabled: Boolean) {
         userPrefs.setAutoCategorize(enabled)
     }
@@ -1114,7 +721,6 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     fun clearAllData() {
         viewModelScope.launch(Dispatchers.IO) {
-            // Delete in FK-safe order: children before parents
             database.dhaarEntryDao().deleteAllEntries()
             database.contactDao().deleteAllContacts()
             database.transactionDao().deleteAllTransactions()
@@ -1123,155 +729,5 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             database.categoryDao().deleteAllCategories()
             database.accountDao().deleteAllAccounts()
         }
-    }
-
-    // Dena-Pawna (Dhaar) StateFlows
-    val allContacts: StateFlow<List<Contact>> = dhaarRepository.allContacts.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
-
-    val allDhaarEntries: StateFlow<List<DhaarEntry>> = dhaarRepository.allEntries.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
-
-    val contactsWithBalances: StateFlow<List<ContactWithBalance>> = dhaarRepository.contactsWithBalances.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
-
-    val dhaarDashboardSummary: StateFlow<DhaarDashboardSummary> = dhaarRepository.dashboardSummary.stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), DhaarDashboardSummary(0.0, 0.0, 0.0, 0, 0)
-    )
-
-    val upcomingDhaarReminders: StateFlow<List<DhaarReminderItem>> = dhaarRepository.getUpcomingDueEntries().stateIn(
-        viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList()
-    )
-
-    fun addContact(contact: Contact, onCreated: (Long) -> Unit = {}) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val id = dhaarRepository.insertContact(contact)
-            googleAuthManager.currentUserId?.let { uid ->
-                firestoreSyncManager.pushContact(uid, contact.copy(id = id))
-            }
-            withContext(Dispatchers.Main) {
-                onCreated(id)
-            }
-        }
-    }
-
-    fun updateContact(contact: Contact) {
-        viewModelScope.launch(Dispatchers.IO) {
-            dhaarRepository.updateContact(contact)
-            googleAuthManager.currentUserId?.let { uid ->
-                firestoreSyncManager.pushContact(uid, contact)
-            }
-        }
-    }
-
-    fun deleteContact(contact: Contact, deleteEntries: Boolean = false, onResult: (Result<Unit>) -> Unit = {}) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val res = dhaarRepository.deleteContact(contact, deleteEntries)
-            if (res.isSuccess) {
-                googleAuthManager.currentUserId?.let { uid ->
-                    firestoreSyncManager.deleteContact(uid, contact.uuid)
-                }
-            }
-            withContext(Dispatchers.Main) {
-                onResult(res)
-            }
-        }
-    }
-
-    fun addDhaarEntry(
-        entry: DhaarEntry,
-        linkToAccount: Boolean = false,
-        accountName: String? = null,
-        onCreated: (Long) -> Unit = {}
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val id = dhaarRepository.insertDhaarEntry(entry, linkToAccount, accountName)
-            googleAuthManager.currentUserId?.let { uid ->
-                val contact = database.contactDao().getContactByIdSync(entry.contactId)
-                val contactUuid = contact?.uuid ?: ""
-                firestoreSyncManager.pushDhaarEntry(uid, entry.copy(id = id), contactUuid)
-            }
-            withContext(Dispatchers.Main) {
-                onCreated(id)
-            }
-        }
-    }
-
-    fun updateDhaarEntry(entry: DhaarEntry) {
-        viewModelScope.launch(Dispatchers.IO) {
-            dhaarRepository.updateDhaarEntry(entry)
-            googleAuthManager.currentUserId?.let { uid ->
-                val contact = database.contactDao().getContactByIdSync(entry.contactId)
-                val contactUuid = contact?.uuid ?: ""
-                firestoreSyncManager.pushDhaarEntry(uid, entry, contactUuid)
-            }
-        }
-    }
-
-    fun deleteDhaarEntry(entry: DhaarEntry) {
-        viewModelScope.launch(Dispatchers.IO) {
-            dhaarRepository.deleteDhaarEntry(entry)
-            googleAuthManager.currentUserId?.let { uid ->
-                firestoreSyncManager.deleteDhaarEntry(uid, entry.uuid)
-            }
-        }
-    }
-
-    fun deleteDhaarEntryById(id: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val existing = database.dhaarEntryDao().getEntryByIdSync(id)
-            dhaarRepository.deleteDhaarEntryById(id)
-            if (existing != null) {
-                googleAuthManager.currentUserId?.let { uid ->
-                    firestoreSyncManager.deleteDhaarEntry(uid, existing.uuid)
-                }
-            }
-        }
-    }
-
-    fun getEntriesForContact(contactId: Long): Flow<List<DhaarEntry>> =
-        dhaarRepository.getEntriesForContact(contactId)
-
-    fun getContactById(contactId: Long): Flow<Contact?> =
-        dhaarRepository.getContactById(contactId)
-
-    private fun computeTotalBalance(accounts: List<AccountEntity>, transactions: List<TransactionEntity>): Double {
-        var balance = accounts.sumOf { it.balance }
-        transactions.forEach { tx ->
-            when (tx.type.uppercase()) {
-                "INCOME" -> balance += tx.amount
-                "EXPENSE" -> balance -= tx.amount
-                // Transfers between owned accounts don't alter net aggregate total
-            }
-        }
-        return balance
-    }
-
-    // --- Update Actions ---
-    fun checkForUpdates(isManual: Boolean = false) {
-        viewModelScope.launch {
-            updateRepository.checkForUpdates(isManualCheck = isManual)
-        }
-    }
-
-    fun skipUpdateVersion(versionCode: Int) {
-        updateRepository.skipVersion(versionCode)
-    }
-
-    fun dismissUpdatePrompt() {
-        updateRepository.dismissUpdate()
-    }
-
-    fun downloadAndInstallUpdate(updateInfo: AppUpdateInfo) {
-        viewModelScope.launch {
-            updateRepository.downloadAndInstallApk(updateInfo)
-        }
-    }
-
-    fun setAutoCheckUpdates(enabled: Boolean) {
-        userPrefs.setAutoCheckUpdates(enabled)
     }
 }

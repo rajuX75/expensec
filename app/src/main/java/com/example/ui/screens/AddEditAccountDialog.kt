@@ -24,6 +24,7 @@ import com.example.data.model.AccountEntity
 import com.example.ui.components.CategoryBadge
 import com.example.ui.components.CategoryIconHelper
 import com.example.ui.viewmodel.ExpenseViewModel
+import java.util.Locale
 import java.util.UUID
 
 @Composable
@@ -36,7 +37,7 @@ fun AddEditAccountDialog(
     var name by remember { mutableStateOf(initialAccount?.name ?: "") }
     var accountType by remember { mutableStateOf(initialAccount?.type ?: "BANK") }
     var initialBalanceText by remember {
-        mutableStateOf(initialAccount?.let { String.format("%.2f", it.balance) } ?: "0.00")
+        mutableStateOf(initialAccount?.let { String.format(Locale.US, "%.2f", it.balance) } ?: "0.00")
     }
     var selectedColor by remember {
         mutableStateOf(initialAccount?.colorHex ?: "#00875A")
@@ -205,11 +206,12 @@ fun AddEditAccountDialog(
                         }
                     }
 
-                    val isValid = name.isNotBlank() && initialBalanceText.toDoubleOrNull() != null
+                    val parsedBalance = initialBalanceText.replace(',', '.').toDoubleOrNull()
+                    val isValid = name.isNotBlank() && parsedBalance != null
 
                     Button(
                         onClick = {
-                            val bal = initialBalanceText.toDoubleOrNull() ?: 0.0
+                            val bal = initialBalanceText.replace(',', '.').toDoubleOrNull() ?: 0.0
                             val account = AccountEntity(
                                 id = initialAccount?.id ?: 0,
                                 uuid = initialAccount?.uuid ?: UUID.randomUUID().toString(),

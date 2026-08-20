@@ -63,7 +63,7 @@ fun AddEditTransactionSheet(
     }
 
     var amountText by remember {
-        mutableStateOf(initialTransaction?.let { String.format("%.2f", it.amount) } ?: "")
+        mutableStateOf(initialTransaction?.let { String.format(Locale.US, "%.2f", it.amount) } ?: "")
     }
 
     val filteredCategories = remember(allCategories, selectedType) {
@@ -112,21 +112,6 @@ fun AddEditTransactionSheet(
     var recurringPeriod by remember { mutableStateOf(initialTransaction?.recurringPeriod ?: "MONTHLY") }
 
     val dateFormat = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault())
-
-    // Date picker dialog
-    val calendar = Calendar.getInstance().apply { timeInMillis = selectedDate }
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
-            val newCal = Calendar.getInstance().apply {
-                set(year, month, dayOfMonth)
-            }
-            selectedDate = newCal.timeInMillis
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -423,7 +408,21 @@ fun AddEditTransactionSheet(
 
             // Date Picker Card
             OutlinedCard(
-                onClick = { datePickerDialog.show() },
+                onClick = {
+                    val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
+                    DatePickerDialog(
+                        context,
+                        { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
+                            val newCal = Calendar.getInstance().apply {
+                                set(year, month, dayOfMonth)
+                            }
+                            selectedDate = newCal.timeInMillis
+                        },
+                        cal.get(Calendar.YEAR),
+                        cal.get(Calendar.MONTH),
+                        cal.get(Calendar.DAY_OF_MONTH)
+                    ).show()
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp)
             ) {
@@ -533,11 +532,12 @@ fun AddEditTransactionSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Save Action Button
-            val isValid = amountText.toDoubleOrNull() != null && (amountText.toDoubleOrNull() ?: 0.0) > 0.0
+            val parsedAmount = amountText.replace(',', '.').toDoubleOrNull()
+            val isValid = parsedAmount != null && parsedAmount > 0.0
 
             Button(
                 onClick = {
-                    val amount = amountText.toDoubleOrNull() ?: return@Button
+                    val amount = amountText.replace(',', '.').toDoubleOrNull() ?: return@Button
                     val finalTx = TransactionEntity(
                         id = initialTransaction?.id ?: 0,
                         uuid = initialTransaction?.uuid ?: UUID.randomUUID().toString(),

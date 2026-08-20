@@ -16,10 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
 
 @Composable
 fun ReceiptAttachmentPicker(
@@ -27,13 +29,18 @@ fun ReceiptAttachmentPicker(
     onReceiptChanged: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var showFullImageDialog by remember { mutableStateOf(false) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            onReceiptChanged(uri.toString())
+            scope.launch {
+                val persistentUri = ImageStorageHelper.saveImageLocally(context, uri, "receipts")
+                onReceiptChanged(persistentUri ?: uri.toString())
+            }
         }
     }
 

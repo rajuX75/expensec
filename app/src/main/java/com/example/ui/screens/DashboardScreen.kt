@@ -39,6 +39,7 @@ fun DashboardScreen(
     onNavigateToBudgets: () -> Unit,
     onNavigateToAccounts: () -> Unit,
     onNavigateToDhaar: () -> Unit = {},
+    onNavigateToShopBaki: () -> Unit = {},
     onNavigateToAnalytics: () -> Unit = {},
     onOpenAddTransaction: (String) -> Unit, // EXPENSE, INCOME, TRANSFER
     onTransactionClicked: (TransactionEntity) -> Unit
@@ -49,7 +50,12 @@ fun DashboardScreen(
     val budgetStatuses by viewModel.budgetStatuses.collectAsState()
     val bills by viewModel.allBills.collectAsState()
     val dhaarSummary by viewModel.dhaarDashboardSummary.collectAsState()
+    val shopsWithBalances by viewModel.shopsWithBalances.collectAsState()
     val allAccounts by viewModel.allAccounts.collectAsState()
+    
+    val totalShopBaki = remember(shopsWithBalances) {
+        shopsWithBalances.filter { it.currentDue > 0 }.sumOf { it.currentDue }
+    }
 
     val overallBudgetStatus = remember(budgetStatuses) {
         budgetStatuses.find { it.budget.categoryId == null } ?: budgetStatuses.firstOrNull()
@@ -264,102 +270,45 @@ fun DashboardScreen(
             )
         }
 
-        // Bento Tile 1: Debts & Loans Card (Prominent Wide Hub)
+        // Bento Row 0: Dhaar (Debts) and Shop Baki (2-Column Grid)
         item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .clickable { onNavigateToDhaar() },
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.14f), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Handshake,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.tertiary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Debts & Loans Ledger",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "${dhaarSummary.activeContactsCount} active records",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Icon(
-                            Icons.Default.ChevronRight,
-                            contentDescription = "Navigate to Debts & Loans",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = IncomeGreen.copy(alpha = 0.1f),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("You'll Get", style = MaterialTheme.typography.labelSmall, color = IncomeGreen)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "$currencySymbol${String.format("%,.2f", dhaarSummary.totalYouWillGet)}",
-                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                    color = IncomeGreen
-                                )
-                            }
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = ExpenseRed.copy(alpha = 0.1f),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("You'll Pay", style = MaterialTheme.typography.labelSmall, color = ExpenseRed)
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "$currencySymbol${String.format("%,.2f", dhaarSummary.totalYouWillPay)}",
-                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                    color = ExpenseRed
-                                )
-                            }
-                        }
-                    }
+                // Bento Card: Debts & Loans (Dhaar)
+                val netPosition = dhaarSummary.netPosition
+                val dhaarValue = if (netPosition >= 0) {
+                    "+$currencySymbol${String.format("%,.0f", netPosition)}"
+                } else {
+                    "-$currencySymbol${String.format("%,.0f", kotlin.math.abs(netPosition))}"
                 }
+                val dhaarColor = if (netPosition >= 0) IncomeGreen else ExpenseRed
+
+                BentoCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Default.Handshake,
+                    iconTint = MaterialTheme.colorScheme.tertiary,
+                    iconBg = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
+                    title = "Dhar Dena",
+                    subtitle = "${dhaarSummary.activeContactsCount} contacts",
+                    value = dhaarValue,
+                    valueLabel = if (netPosition >= 0) "Net receivable" else "Net payable",
+                    onClick = onNavigateToDhaar
+                )
+
+                // Bento Card: Shop Baki
+                BentoCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Default.Storefront,
+                    iconTint = Color(0xFFF59E0B),
+                    iconBg = Color(0xFFF59E0B).copy(alpha = 0.15f),
+                    title = "Shop Baki",
+                    subtitle = "${shopsWithBalances.count { it.currentDue > 0 }} active shops",
+                    value = "$currencySymbol${String.format("%,.0f", totalShopBaki)}",
+                    valueLabel = "Total owed to shops",
+                    onClick = onNavigateToShopBaki
+                )
             }
         }
 
@@ -593,137 +542,5 @@ fun DashboardScreen(
     }
 }
 
-@Composable
-fun QuickActionPill(
-    title: String,
-    icon: ImageVector,
-    bgColor: Color,
-    tintColor: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 1.dp,
-        modifier = modifier.height(48.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .background(bgColor, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = tintColor,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
 
-@Composable
-fun BentoCard(
-    icon: ImageVector,
-    iconTint: Color,
-    iconBg: Color,
-    title: String,
-    subtitle: String,
-    value: String,
-    valueLabel: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .background(iconBg, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = iconTint,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Icon(
-                    imageVector = Icons.Default.ArrowOutward,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                color = iconTint,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Text(
-                text = valueLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
+// QuickActionPill and BentoCard are defined in DashboardCards.kt

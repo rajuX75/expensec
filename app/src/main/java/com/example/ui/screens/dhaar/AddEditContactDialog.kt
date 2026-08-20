@@ -52,11 +52,9 @@ fun AddEditContactDialog(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).let { _ ->
-                scope.launch {
-                    val persistentUri = com.example.ui.components.ImageStorageHelper.saveImageLocally(context, it, "contacts")
-                    photoUri = persistentUri ?: it.toString()
-                }
+            scope.launch {
+                val persistentUri = com.example.ui.components.ImageStorageHelper.saveImageLocally(context, it, "contacts")
+                photoUri = persistentUri ?: it.toString()
             }
         }
     }

@@ -28,12 +28,10 @@ object ImageStorageHelper {
             val fileName = "img_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}.jpg"
             val destFile = File(folder, fileName)
 
-            val inputStream: InputStream? = context.contentResolver.openInputStream(sourceUri)
-            if (inputStream != null) {
+            context.contentResolver.openInputStream(sourceUri)?.use { inputStream ->
                 FileOutputStream(destFile).use { outputStream ->
                     inputStream.copyTo(outputStream)
                 }
-                inputStream.close()
                 return@withContext Uri.fromFile(destFile).toString()
             }
             null

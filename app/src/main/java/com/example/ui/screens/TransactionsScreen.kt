@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -42,6 +44,8 @@ fun TransactionsScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filterType by viewModel.filterType.collectAsState()
     val filterTimeRange by viewModel.filterTimeRange.collectAsState()
+    val filterCategoryId by viewModel.filterCategoryId.collectAsState()
+    val filterAccountId by viewModel.filterAccountId.collectAsState()
     val allCategories by viewModel.allCategories.collectAsState()
     val allAccounts by viewModel.allAccounts.collectAsState()
 
@@ -434,6 +438,155 @@ fun TransactionsScreen(
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Edit")
                     }
+                }
+            }
+        }
+    }
+
+    if (showFilterSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showFilterSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Filter Transactions",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                    TextButton(
+                        onClick = { viewModel.resetFilters() }
+                    ) {
+                        Text("Reset All", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Time Range
+                Text(
+                    text = "Time Range",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                val timeRanges = listOf(
+                    "ALL" to "All Time",
+                    "THIS_MONTH" to "This Month",
+                    "LAST_30_DAYS" to "Last 30 Days",
+                    "THIS_YEAR" to "This Year"
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(timeRanges) { (key, label) ->
+                        FilterChip(
+                            selected = filterTimeRange == key,
+                            onClick = { viewModel.setFilterTimeRange(key) },
+                            label = { Text(label) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Transaction Type
+                Text(
+                    text = "Transaction Type",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                val types = listOf(
+                    "ALL" to "All Types",
+                    "EXPENSE" to "Expenses",
+                    "INCOME" to "Income",
+                    "TRANSFER" to "Transfers"
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(types) { (key, label) ->
+                        FilterChip(
+                            selected = filterType == key,
+                            onClick = { viewModel.setFilterType(key) },
+                            label = { Text(label) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Account Filter
+                Text(
+                    text = "Account",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item {
+                        FilterChip(
+                            selected = filterAccountId == null,
+                            onClick = { viewModel.setFilterAccountId(null) },
+                            label = { Text("All Accounts") }
+                        )
+                    }
+                    items(allAccounts) { acc ->
+                        FilterChip(
+                            selected = filterAccountId == acc.id,
+                            onClick = {
+                                viewModel.setFilterAccountId(if (filterAccountId == acc.id) null else acc.id)
+                            },
+                            label = { Text(acc.name) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Category Filter
+                Text(
+                    text = "Category",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item {
+                        FilterChip(
+                            selected = filterCategoryId == null,
+                            onClick = { viewModel.setFilterCategoryId(null) },
+                            label = { Text("All Categories") }
+                        )
+                    }
+                    items(allCategories) { cat ->
+                        FilterChip(
+                            selected = filterCategoryId == cat.id,
+                            onClick = {
+                                viewModel.setFilterCategoryId(if (filterCategoryId == cat.id) null else cat.id)
+                            },
+                            label = { Text(cat.name) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = { showFilterSheet = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("Apply Filters")
                 }
             }
         }

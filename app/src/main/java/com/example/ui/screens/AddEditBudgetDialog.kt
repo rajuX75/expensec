@@ -16,6 +16,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.data.model.BudgetEntity
 import com.example.data.model.CategoryEntity
 import com.example.ui.viewmodel.ExpenseViewModel
+import java.util.Locale
 import java.util.UUID
 
 @Composable
@@ -43,7 +44,7 @@ fun AddEditBudgetDialog(
     }
 
     var limitAmountText by remember {
-        mutableStateOf(initialBudget?.let { String.format("%.2f", it.amountLimit) } ?: "")
+        mutableStateOf(initialBudget?.let { String.format(Locale.US, "%.2f", it.amountLimit) } ?: "")
     }
 
     var alertThreshold by remember {
@@ -201,11 +202,12 @@ fun AddEditBudgetDialog(
                         }
                     }
 
-                    val isValid = limitAmountText.toDoubleOrNull() != null && (limitAmountText.toDoubleOrNull() ?: 0.0) > 0.0
+                    val parsedLimit = limitAmountText.replace(',', '.').toDoubleOrNull()
+                    val isValid = parsedLimit != null && parsedLimit > 0.0
 
                     Button(
                         onClick = {
-                            val limit = limitAmountText.toDoubleOrNull() ?: return@Button
+                            val limit = limitAmountText.replace(',', '.').toDoubleOrNull() ?: return@Button
                             val budget = BudgetEntity(
                                 id = initialBudget?.id ?: 0,
                                 uuid = initialBudget?.uuid ?: UUID.randomUUID().toString(),

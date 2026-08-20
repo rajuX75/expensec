@@ -37,7 +37,7 @@ fun AddEditBillDialog(
 
     var title by remember { mutableStateOf(initialBill?.title ?: "") }
     var amountText by remember {
-        mutableStateOf(initialBill?.let { String.format("%.2f", it.amount) } ?: "")
+        mutableStateOf(initialBill?.let { String.format(Locale.US, "%.2f", it.amount) } ?: "")
     }
     var dueDate by remember { mutableStateOf(initialBill?.dueDate ?: System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000L)) }
     var frequency by remember { mutableStateOf(initialBill?.frequency ?: "MONTHLY") }
@@ -50,18 +50,6 @@ fun AddEditBillDialog(
     var autoLog by remember { mutableStateOf(initialBill?.autoLogTransaction ?: true) }
 
     val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-    val cal = Calendar.getInstance().apply { timeInMillis = dueDate }
-
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _: DatePicker, year: Int, month: Int, day: Int ->
-            val newCal = Calendar.getInstance().apply { set(year, month, day) }
-            dueDate = newCal.timeInMillis
-        },
-        cal.get(Calendar.YEAR),
-        cal.get(Calendar.MONTH),
-        cal.get(Calendar.DAY_OF_MONTH)
-    )
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -127,7 +115,19 @@ fun AddEditBillDialog(
 
                 // Due Date Card
                 OutlinedCard(
-                    onClick = { datePickerDialog.show() },
+                    onClick = {
+                        val cal = Calendar.getInstance().apply { timeInMillis = dueDate }
+                        DatePickerDialog(
+                            context,
+                            { _: DatePicker, year: Int, month: Int, day: Int ->
+                                val newCal = Calendar.getInstance().apply { set(year, month, day) }
+                                dueDate = newCal.timeInMillis
+                            },
+                            cal.get(Calendar.YEAR),
+                            cal.get(Calendar.MONTH),
+                            cal.get(Calendar.DAY_OF_MONTH)
+                        ).show()
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -208,11 +208,12 @@ fun AddEditBillDialog(
                         }
                     }
 
-                    val isValid = title.isNotBlank() && amountText.toDoubleOrNull() != null
+                    val parsedAmount = amountText.replace(',', '.').toDoubleOrNull()
+                    val isValid = title.isNotBlank() && parsedAmount != null && parsedAmount > 0.0
 
                     Button(
                         onClick = {
-                            val amount = amountText.toDoubleOrNull() ?: 0.0
+                            val amount = amountText.replace(',', '.').toDoubleOrNull() ?: 0.0
                             val bill = BillEntity(
                                 id = initialBill?.id ?: 0,
                                 uuid = initialBill?.uuid ?: UUID.randomUUID().toString(),
