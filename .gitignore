@@ -18,3 +18,9 @@ local.properties
 .env
 debug.keystore
 
+# NEVER commit signing material
+*.jks
+*.keystore
+my-upload-key.jks
+releases/*.apk
+

@@ -41,9 +41,9 @@ class ShopBakiDelegate(
     fun addShop(shop: Shop, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             val id = shopBakiRepository.insertShop(shop)
-            onCreated(id)
+            kotlinx.coroutines.withContext(Dispatchers.Main) { onCreated(id) }
             googleAuthManager.currentUserId?.let { uid ->
-                firestoreSyncManager.pushShop(uid, shop)
+                firestoreSyncManager.pushShop(uid, shop.copy(id = id))
             }
         }
     }
@@ -65,7 +65,7 @@ class ShopBakiDelegate(
                     firestoreSyncManager.deleteShop(uid, shop.uuid)
                 }
             }
-            launch(Dispatchers.Main) { onResult(result) }
+            kotlinx.coroutines.withContext(Dispatchers.Main) { onResult(result) }
         }
     }
 
@@ -74,9 +74,9 @@ class ShopBakiDelegate(
     fun addProduct(product: ShopProduct, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             val id = shopBakiRepository.insertProduct(product)
-            onCreated(id)
+            kotlinx.coroutines.withContext(Dispatchers.Main) { onCreated(id) }
             googleAuthManager.currentUserId?.let { uid ->
-                firestoreSyncManager.pushShopProduct(uid, product)
+                firestoreSyncManager.pushShopProduct(uid, product.copy(id = id))
             }
         }
     }
@@ -95,18 +95,18 @@ class ShopBakiDelegate(
             val result = shopBakiRepository.deleteProduct(product)
             if (result.isSuccess) {
                 googleAuthManager.currentUserId?.let { uid ->
-                    // Since it might be a soft delete (isArchived=true), push the update if so, or delete if hard deleted.
-                    // The easiest way is to re-fetch the product by ID to see if it was archived.
-                    // But actually, deleteProduct returns Result. If it was soft-deleted, it's technically still there.
-                    // We can just try pushing the archived version.
-                    // Or, even simpler: just push the product.copy(isArchived = true) - but only if it had entries.
-                    // To keep it clean, we don't know here. The repository handled the logic.
-                    // We should just trigger a full sync or assume it was handled.
-                    // For now, let's just trigger a full sync to ensure consistency.
-                    firestoreSyncManager.syncAll(uid)
+                    // deleteProduct reports whether it soft- or hard-deleted:
+                    //  - soft delete -> push the archived product (keeps remote in sync)
+                    //  - hard delete -> remove the remote document
+                    val softDeleted = result.getOrDefault(false)
+                    if (softDeleted) {
+                        firestoreSyncManager.pushShopProduct(uid, product.copy(isArchived = true))
+                    } else {
+                        firestoreSyncManager.deleteShopProduct(uid, product.uuid)
+                    }
                 }
             }
-            launch(Dispatchers.Main) { onResult(result) }
+            kotlinx.coroutines.withContext(Dispatchers.Main) { onResult(result.map { }) }
         }
     }
 
@@ -115,19 +115,15 @@ class ShopBakiDelegate(
     fun addLedgerEntry(entry: ShopLedgerEntry, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
             val id = shopBakiRepository.insertLedgerEntry(entry)
-            onCreated(id)
+            kotlinx.coroutines.withContext(Dispatchers.Main) { onCreated(id) }
             googleAuthManager.currentUserId?.let { uid ->
-                // Look up UUIDs for FKs
+                // Resolve UUIDs for FK references
                 val shop = shopBakiRepository.getShopById(entry.shopId).firstOrNull()
                 val shopUuid = shop?.uuid ?: ""
-                var productUuid: String? = null
-                if (entry.productId != null) {
-                   // actually we don't have a simple getProductById sync in repo right now, let's just trigger a syncAll if we can't get it easily.
-                   // Or add a helper to repo.
-                   firestoreSyncManager.syncAll(uid)
-                } else {
-                   firestoreSyncManager.pushShopLedgerEntry(uid, entry, shopUuid, null)
+                val productUuid = entry.productId?.let { pid ->
+                    shopBakiRepository.getProductUuidById(pid)
                 }
+                firestoreSyncManager.pushShopLedgerEntry(uid, entry, shopUuid, productUuid)
             }
         }
     }

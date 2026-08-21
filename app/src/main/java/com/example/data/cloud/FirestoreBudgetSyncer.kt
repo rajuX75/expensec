@@ -75,7 +75,7 @@ class FirestoreBudgetSyncer(
             docRef.set(data, SetOptions.merge()).await()
         }
 
-        val remoteDocs = budgetCollection.get().await().documents
+        val remoteDocs = budgetCollection.get(com.google.firebase.firestore.Source.SERVER).await().documents
         val remoteUuids = mutableSetOf<String>()
         for (doc in remoteDocs) {
             val data = doc.data ?: continue
@@ -95,8 +95,11 @@ class FirestoreBudgetSyncer(
             database.budgetDao().insertBudget(entity)
         }
 
-        // Delete local items that were removed from Firestore (prevent resurrection)
-        for (local in localBudgets) {
+        // Delete local items that were removed from Firestore (prevent resurrection).
+        // SAFETY: never run the delete pass when the server returned zero docs
+        // while local data exists -- that would wipe local data on any failed/empty fetch.
+        val shouldDeleteMissingLocals = remoteUuids.isNotEmpty() || localBudgets.isEmpty()
+        if (shouldDeleteMissingLocals) for (local in localBudgets) {
             if (local.uuid.isNotBlank() && local.uuid !in remoteUuids) {
                 runCatching { database.budgetDao().deleteBudgetByUuid(local.uuid) }
             }

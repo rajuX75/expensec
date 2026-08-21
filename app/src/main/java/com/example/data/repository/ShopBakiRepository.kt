@@ -77,18 +77,28 @@ class ShopBakiRepository(
         shopProductDao.insertProduct(product)
     }
 
+    suspend fun getProductUuidById(productId: Long): String? = withContext(Dispatchers.IO) {
+        shopProductDao.getProductByIdSync(productId)?.uuid
+    }
+
     suspend fun updateProduct(product: ShopProduct) = withContext(Dispatchers.IO) {
         shopProductDao.updateProduct(product)
     }
 
-    suspend fun deleteProduct(product: ShopProduct): Result<Unit> = withContext(Dispatchers.IO) {
+    /**
+     * Deletes a product, or soft-deletes (archives) it when ledger entries reference it.
+     * Returns true when the product was soft-deleted (archived), false on hard delete.
+     */
+    suspend fun deleteProduct(product: ShopProduct): Result<Boolean> = withContext(Dispatchers.IO) {
         runCatching {
             val count = shopLedgerEntryDao.getEntryCountForProduct(product.id)
             if (count > 0) {
                 // Soft delete
                 shopProductDao.updateProduct(product.copy(isArchived = true))
+                true
             } else {
                 shopProductDao.deleteProduct(product)
+                false
             }
         }
     }

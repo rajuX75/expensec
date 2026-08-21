@@ -138,7 +138,7 @@ class FirestoreDhaarSyncer(
             docRef.set(data, SetOptions.merge()).await()
         }
 
-        val remoteContacts = contactsCollection.get().await().documents
+        val remoteContacts = contactsCollection.get(com.google.firebase.firestore.Source.SERVER).await().documents
         val remoteContactUuids = mutableSetOf<String>()
         for (doc in remoteContacts) {
             val data = doc.data ?: continue
@@ -162,8 +162,11 @@ class FirestoreDhaarSyncer(
         }
 
         // Delete local contacts that were removed from Firestore (prevent resurrection)
-        // Only delete contacts without local dhaar entries to avoid FK constraint errors
-        for (local in localContacts) {
+        // Only delete contacts without local dhaar entries to avoid FK constraint errors.
+        // SAFETY: never run the delete pass when the server returned zero docs while local
+        // data exists -- that would wipe local data on any failed/empty fetch.
+        val shouldDeleteMissingContacts = remoteContactUuids.isNotEmpty() || localContacts.isEmpty()
+        if (shouldDeleteMissingContacts) for (local in localContacts) {
             if (local.uuid.isNotBlank() && local.uuid !in remoteContactUuids) {
                 val entryCount = database.dhaarEntryDao().getEntryCountForContact(local.id)
                 if (entryCount == 0) {
@@ -195,7 +198,7 @@ class FirestoreDhaarSyncer(
             docRef.set(data, SetOptions.merge()).await()
         }
 
-        val remoteEntries = entriesCollection.get().await().documents
+        val remoteEntries = entriesCollection.get(com.google.firebase.firestore.Source.SERVER).await().documents
         val remoteEntryUuids = mutableSetOf<String>()
         for (doc in remoteEntries) {
             val data = doc.data ?: continue
@@ -222,8 +225,11 @@ class FirestoreDhaarSyncer(
             database.dhaarEntryDao().insertEntry(entry)
         }
 
-        // Delete local entries that were removed from Firestore (prevent resurrection)
-        for (local in localEntries) {
+        // Delete local entries that were removed from Firestore (prevent resurrection).
+        // SAFETY: never run the delete pass when the server returned zero docs while local
+        // data exists -- that would wipe local data on any failed/empty fetch.
+        val shouldDeleteMissingEntries = remoteEntryUuids.isNotEmpty() || localEntries.isEmpty()
+        if (shouldDeleteMissingEntries) for (local in localEntries) {
             if (local.uuid.isNotBlank() && local.uuid !in remoteEntryUuids) {
                 runCatching { database.dhaarEntryDao().deleteEntryByUuid(local.uuid) }
             }

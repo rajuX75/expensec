@@ -185,7 +185,7 @@ class FirestoreShopBakiSyncer(
             )
             docRef.set(data, SetOptions.merge()).await()
         }
-        val remoteShops = shopsCollection.get().await().documents
+        val remoteShops = shopsCollection.get(com.google.firebase.firestore.Source.SERVER).await().documents
         val remoteShopUuids = mutableSetOf<String>()
         for (doc in remoteShops) {
             val data = doc.data ?: continue
@@ -203,7 +203,10 @@ class FirestoreShopBakiSyncer(
             )
             if (existing != null) database.shopDao().updateShop(shop) else database.shopDao().insertShop(shop)
         }
-        for (local in localShops) {
+        // SAFETY: never run the delete pass when the server returned zero docs while local
+        // data exists -- that would wipe local data on any failed/empty fetch.
+        val shouldDeleteMissingShops = remoteShopUuids.isNotEmpty() || localShops.isEmpty()
+        if (shouldDeleteMissingShops) for (local in localShops) {
             if (local.uuid.isNotBlank() && local.uuid !in remoteShopUuids) {
                 val entryCount = database.shopLedgerEntryDao().getEntryCountForShop(local.id)
                 if (entryCount == 0) {
@@ -227,7 +230,7 @@ class FirestoreShopBakiSyncer(
             )
             docRef.set(data, SetOptions.merge()).await()
         }
-        val remoteProducts = productsCollection.get().await().documents
+        val remoteProducts = productsCollection.get(com.google.firebase.firestore.Source.SERVER).await().documents
         val remoteProductUuids = mutableSetOf<String>()
         for (doc in remoteProducts) {
             val data = doc.data ?: continue
@@ -245,7 +248,9 @@ class FirestoreShopBakiSyncer(
             )
             if (existing != null) database.shopProductDao().updateProduct(product) else database.shopProductDao().insertProduct(product)
         }
-        for (local in localProducts) {
+        // SAFETY: same empty-fetch guard as shops.
+        val shouldDeleteMissingProducts = remoteProductUuids.isNotEmpty() || localProducts.isEmpty()
+        if (shouldDeleteMissingProducts) for (local in localProducts) {
             if (local.uuid.isNotBlank() && local.uuid !in remoteProductUuids) {
                 val entryCount = database.shopLedgerEntryDao().getEntryCountForProduct(local.id)
                 if (entryCount == 0) {
@@ -275,7 +280,7 @@ class FirestoreShopBakiSyncer(
             docRef.set(data, SetOptions.merge()).await()
         }
 
-        val remoteEntries = entriesCollection.get().await().documents
+        val remoteEntries = entriesCollection.get(com.google.firebase.firestore.Source.SERVER).await().documents
         val remoteEntryUuids = mutableSetOf<String>()
         for (doc in remoteEntries) {
             val data = doc.data ?: continue
@@ -304,7 +309,9 @@ class FirestoreShopBakiSyncer(
             database.shopLedgerEntryDao().insertEntry(entry)
         }
 
-        for (local in localEntries) {
+        // SAFETY: same empty-fetch guard as shops.
+        val shouldDeleteMissingEntries = remoteEntryUuids.isNotEmpty() || localEntries.isEmpty()
+        if (shouldDeleteMissingEntries) for (local in localEntries) {
             if (local.uuid.isNotBlank() && local.uuid !in remoteEntryUuids) {
                 runCatching { database.shopLedgerEntryDao().deleteEntryByUuid(local.uuid) }
             }

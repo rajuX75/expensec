@@ -83,7 +83,7 @@ class FirestoreBillSyncer(
             docRef.set(data, SetOptions.merge()).await()
         }
 
-        val remoteDocs = billCollection.get().await().documents
+        val remoteDocs = billCollection.get(com.google.firebase.firestore.Source.SERVER).await().documents
         val remoteUuids = mutableSetOf<String>()
         for (doc in remoteDocs) {
             val data = doc.data ?: continue
@@ -107,8 +107,11 @@ class FirestoreBillSyncer(
             database.billDao().insertBill(entity)
         }
 
-        // Delete local items that were removed from Firestore (prevent resurrection)
-        for (local in localBills) {
+        // Delete local items that were removed from Firestore (prevent resurrection).
+        // SAFETY: never run the delete pass when the server returned zero docs
+        // while local data exists -- that would wipe local data on any failed/empty fetch.
+        val shouldDeleteMissingLocals = remoteUuids.isNotEmpty() || localBills.isEmpty()
+        if (shouldDeleteMissingLocals) for (local in localBills) {
             if (local.uuid.isNotBlank() && local.uuid !in remoteUuids) {
                 runCatching { database.billDao().deleteBillByUuid(local.uuid) }
             }

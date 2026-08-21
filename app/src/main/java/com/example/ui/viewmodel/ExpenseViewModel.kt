@@ -446,9 +446,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     // Repository Mutations
     fun addTransaction(transaction: TransactionEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.insertTransaction(transaction)
+            // Capture the generated row id and push the entity WITH it, otherwise the
+            // realtime listener can insert a duplicate (id=0) copy of the same transaction.
+            val newId = repository.insertTransaction(transaction)
             googleAuthManager.currentUserId?.let { uid ->
-                firestoreSyncManager.pushTransaction(uid, transaction)
+                firestoreSyncManager.pushTransaction(uid, transaction.copy(id = newId))
             }
         }
     }

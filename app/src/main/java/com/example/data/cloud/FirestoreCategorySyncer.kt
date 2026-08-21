@@ -73,7 +73,7 @@ class FirestoreCategorySyncer(
             docRef.set(data, SetOptions.merge()).await()
         }
 
-        val remoteDocs = catCollection.get().await().documents
+        val remoteDocs = catCollection.get(com.google.firebase.firestore.Source.SERVER).await().documents
         val remoteUuids = mutableSetOf<String>()
         for (doc in remoteDocs) {
             val data = doc.data ?: continue
@@ -92,8 +92,11 @@ class FirestoreCategorySyncer(
             database.categoryDao().insertCategory(entity)
         }
 
-        // Delete local items that were removed from Firestore (prevent resurrection)
-        for (local in localCategories) {
+        // Delete local items that were removed from Firestore (prevent resurrection).
+        // SAFETY: never run the delete pass when the server returned zero docs
+        // while local data exists -- that would wipe local data on any failed/empty fetch.
+        val shouldDeleteMissingLocals = remoteUuids.isNotEmpty() || localCategories.isEmpty()
+        if (shouldDeleteMissingLocals) for (local in localCategories) {
             if (local.uuid.isNotBlank() && local.uuid !in remoteUuids) {
                 runCatching { database.categoryDao().deleteCategoryByUuid(local.uuid) }
             }

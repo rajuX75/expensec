@@ -75,7 +75,7 @@ class FirestoreAccountSyncer(
             docRef.set(data, SetOptions.merge()).await()
         }
 
-        val remoteDocs = accCollection.get().await().documents
+        val remoteDocs = accCollection.get(com.google.firebase.firestore.Source.SERVER).await().documents
         val remoteUuids = mutableSetOf<String>()
         for (doc in remoteDocs) {
             val data = doc.data ?: continue
@@ -95,8 +95,11 @@ class FirestoreAccountSyncer(
             database.accountDao().insertAccount(entity)
         }
 
-        // Delete local items that were removed from Firestore (prevent resurrection)
-        for (local in localAccounts) {
+        // Delete local items that were removed from Firestore (prevent resurrection).
+        // SAFETY: never run the delete pass when the server returned zero docs
+        // while local data exists -- that would wipe local data on any failed/empty fetch.
+        val shouldDeleteMissingLocals = remoteUuids.isNotEmpty() || localAccounts.isEmpty()
+        if (shouldDeleteMissingLocals) for (local in localAccounts) {
             if (local.uuid.isNotBlank() && local.uuid !in remoteUuids) {
                 runCatching { database.accountDao().deleteAccountByUuid(local.uuid) }
             }

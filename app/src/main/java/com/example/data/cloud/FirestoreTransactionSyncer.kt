@@ -106,7 +106,7 @@ class FirestoreTransactionSyncer(
         }
 
         // 2. Fetch remote transactions and merge to Room
-        val remoteDocs = transCollection.get().await().documents
+        val remoteDocs = transCollection.get(com.google.firebase.firestore.Source.SERVER).await().documents
         val remoteUuids = mutableSetOf<String>()
         for (doc in remoteDocs) {
             val data = doc.data ?: continue
@@ -139,8 +139,11 @@ class FirestoreTransactionSyncer(
             database.transactionDao().insertTransaction(entity)
         }
 
-        // 3. Delete local items that were removed from Firestore (prevent resurrection)
-        for (local in localTransactions) {
+        // 3. Delete local items that were removed from Firestore (prevent resurrection).
+        // SAFETY: never run the delete pass when the server returned zero docs while local
+        // data exists -- that would wipe all local data on any failed/empty fetch.
+        val shouldDeleteMissingLocals = remoteUuids.isNotEmpty() || localTransactions.isEmpty()
+        if (shouldDeleteMissingLocals) for (local in localTransactions) {
             if (local.uuid.isNotBlank() && local.uuid !in remoteUuids) {
                 runCatching { database.transactionDao().deleteTransactionByUuid(local.uuid) }
             }
