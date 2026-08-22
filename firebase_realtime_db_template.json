@@ -1,22 +1,16 @@
 {
   "app_version": {
-    "versionCode": 1,
-    "versionName": "1.0.0",
+    "versionCode": 3,
+    "versionName": "1.1.1",
     "minSupportedVersionCode": 1,
-    "releaseTitle": "v1.0.0 — Initial Official Release",
-    "releaseNotes": "• Clean local-first financial manager with zero balance start\n• Debt & loan (Dhaar) tracker with contact photo avatars\n• Real-time Firebase database synchronization\n• In-app smart updates with auto-download\n• Refined Material 3 user interface",
-    "downloadUrl": "https://github.com/rajuX75/expensec/releases/latest/download/expense-tracker-release.apk",
-    "releaseDate": "2026-08-19",
-    "apkSizeMb": 20.1,
+    "releaseTitle": "v1.1.1 — Automated Release",
+    "releaseNotes": "Automated release triggered from GitHub Actions.",
+    "downloadUrl": "https://github.com/rajuX75/expensec/releases/latest/download/app-release.apk",
+    "releaseDate": "2026-08-22",
+    "apkSizeMb": 25.0,
     "isMandatory": false,
     "changes": [
-      "Clean, local-first financial manager with 0-balance start",
-      "Dhaar (Debts & Loans) tracker with contact photo avatars & phone picker",
-      "User profile picture upload and custom contact photos",
-      "Real-time Firebase Firestore database synchronization",
-      "Firebase Realtime DB app configuration and smart update system",
-      "Sleek, compact search bar and refined Material 3 UI",
-      "Fixed phone contact selection crash with safe permission-free picker"
+      "fix: Add contents write permission for GH Actions and bump version to 1.1.1"
     ]
   },
   "app_config": {
@@ -40,6 +34,17 @@
     }
   },
   "changelog": {
+    "v1_1_1": {
+      "versionCode": 3,
+      "versionName": "1.1.1",
+      "releaseDate": "August 2026",
+      "title": "Automated Release & Shop Baki",
+      "changes": [
+        "New Shop Baki (Shop Credit) feature with image uploads",
+        "CI/CD Automated Releases via GitHub Actions",
+        "Real-time Firebase app_version auto-updates"
+      ]
+    },
     "v1_0_0": {
       "versionCode": 1,
       "versionName": "v1.0.0",
