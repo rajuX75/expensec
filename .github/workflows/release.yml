@@ -83,23 +83,24 @@ jobs:
           # Get the latest commit message
           COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
           
-          # Create changelog array with jq
-          CHANGELOG_JSON=$(jq -n --arg msg "$COMMIT_MSG" '[{"type": "FEATURE", "text": $msg}]')
+          # Create changes array with jq (array of strings)
+          CHANGES_JSON=$(jq -n --arg msg "$COMMIT_MSG" '[$msg]')
           
           PAYLOAD=$(jq -n \
             --arg vc "$VERSION_CODE" \
             --arg vn "$VERSION_NAME" \
             --arg d "$DATE" \
-            --argjson cl "$CHANGELOG_JSON" \
+            --argjson cl "$CHANGES_JSON" \
             '{
               "versionCode": ($vc | tonumber),
               "versionName": $vn,
               "minSupportedVersionCode": 1,
               "releaseTitle": ("v" + $vn + " — Automated Release"),
               "releaseNotes": "Automated release triggered from GitHub Actions.",
-              "changelog": $cl,
+              "changes": $cl,
               "downloadUrl": "https://github.com/${{ github.repository }}/releases/latest/download/app-release.apk",
               "releaseDate": $d,
+              "apkSizeMb": 25.0,
               "isMandatory": false
             }')
           
