@@ -118,5 +118,30 @@ jobs:
           curl -s -X PATCH "$BASE_URL/app_version.json?auth=$RTDB_SECRET" \
                -H "Content-Type: application/json" \
                -d "$PAYLOAD"
+               
+          # Generate a safe key for the changelog node (e.g., 1.1.2 -> v1_1_2)
+          SAFE_VN_KEY="v${VERSION_NAME//./_}"
+          
+          # Create the historical changelog payload for this specific version
+          CHANGELOG_PAYLOAD=$(jq -n \
+            --arg vc "$VERSION_CODE" \
+            --arg vn "$VERSION_NAME" \
+            --arg d "$DATE" \
+            --argjson cl "$CHANGES_JSON" \
+            '{
+              "versionCode": ($vc | tonumber),
+              "versionName": $vn,
+              "releaseDate": $d,
+              "title": ("v" + $vn + " — Automated Release"),
+              "changes": $cl
+            }')
+            
+          # Wrap it in the specific version key
+          CHANGELOG_UPDATE=$(jq -n --arg key "$SAFE_VN_KEY" --argjson payload "$CHANGELOG_PAYLOAD" '{($key): $payload}')
+          
+          echo -e "\nUpdating Firebase RTDB changelog at $BASE_URL/changelog.json..."
+          curl -s -X PATCH "$BASE_URL/changelog.json?auth=$RTDB_SECRET" \
+               -H "Content-Type: application/json" \
+               -d "$CHANGELOG_UPDATE"
           
           echo -e "\nFirebase RTDB update completed."
