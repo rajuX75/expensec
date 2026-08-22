@@ -64,3 +64,48 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Firebase Realtime Database
+        env:
+          RTDB_URL: ${{ secrets.FIREBASE_RTDB_URL }}
+          RTDB_SECRET: ${{ secrets.FIREBASE_RTDB_SECRET }}
+        run: |
+          if [ -z "$RTDB_URL" ] || [ -z "$RTDB_SECRET" ]; then
+            echo "FIREBASE_RTDB_URL or FIREBASE_RTDB_SECRET is missing. Skipping Firebase DB update."
+            exit 0
+          fi
+          
+          BASE_URL=$(echo "$RTDB_URL" | sed 's/\/$//')
+          DATE=$(date +'%Y-%m-%d')
+          VERSION_CODE=$(grep "versionCode =" app/build.gradle.kts | awk '{print $3}')
+          VERSION_NAME=$(grep "versionName =" app/build.gradle.kts | awk -F '"' '{print $2}')
+          
+          # Get the latest commit message
+          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+          
+          # Create changelog array with jq
+          CHANGELOG_JSON=$(jq -n --arg msg "$COMMIT_MSG" '[{"type": "FEATURE", "text": $msg}]')
+          
+          PAYLOAD=$(jq -n \
+            --arg vc "$VERSION_CODE" \
+            --arg vn "$VERSION_NAME" \
+            --arg d "$DATE" \
+            --argjson cl "$CHANGELOG_JSON" \
+            '{
+              "versionCode": ($vc | tonumber),
+              "versionName": $vn,
+              "minSupportedVersionCode": 1,
+              "releaseTitle": ("v" + $vn + " — Automated Release"),
+              "releaseNotes": "Automated release triggered from GitHub Actions.",
+              "changelog": $cl,
+              "downloadUrl": "https://github.com/${{ github.repository }}/releases/latest/download/app-release.apk",
+              "releaseDate": $d,
+              "isMandatory": false
+            }')
+          
+          echo "Updating Firebase RTDB at $BASE_URL/app_version.json..."
+          curl -s -X PATCH "$BASE_URL/app_version.json?auth=$RTDB_SECRET" \
+               -H "Content-Type: application/json" \
+               -d "$PAYLOAD"
+          
+          echo -e "\nFirebase RTDB update completed."
