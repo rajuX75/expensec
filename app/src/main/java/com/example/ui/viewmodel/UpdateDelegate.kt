@@ -4,6 +4,8 @@ import com.example.data.model.AppUpdateInfo
 import com.example.data.repository.UpdateRepository
 import com.example.data.repository.UserPreferencesRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class UpdateDelegate(
@@ -18,7 +20,24 @@ class UpdateDelegate(
     val updateDownloadState = updateRepository.downloadState
     val currentAppVersionName = updateRepository.getCurrentVersionName()
     val currentAppVersionCode = updateRepository.getCurrentVersionCode()
-    val releaseHistory = updateRepository.getReleaseHistory()
+    
+    // Reactively observe release history from Firebase via the repository
+    val releaseHistory: kotlinx.coroutines.flow.StateFlow<List<com.example.data.model.VersionReleaseLog>> = 
+        updateRepository.releaseHistoryFlow
+            .map { rtdbLogs ->
+                if (rtdbLogs.isNotEmpty()) {
+                    rtdbLogs.map { log ->
+                        log.copy(isCurrent = log.versionCode == currentAppVersionCode)
+                    }
+                } else {
+                    updateRepository.getReleaseHistory() // fallback
+                }
+            }
+            .stateIn(
+                scope = viewModelScope,
+                started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+                initialValue = updateRepository.getReleaseHistory()
+            )
 
     fun checkForUpdates(isManual: Boolean = false) {
         viewModelScope.launch {

@@ -329,6 +329,46 @@ class UserPreferencesRepository(context: Context) {
         _lastUpdateCheckTime.value = timestamp
     }
 
+    fun registerPrefChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    fun unregisterPrefChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
+        prefs.unregisterOnSharedPreferenceChangeListener(listener)
+    }
+
+    fun getAllPrefs(): Map<String, Any?> {
+        return prefs.all
+    }
+
+    fun restorePrefs(map: Map<String, Any?>) {
+        val editor = prefs.edit()
+        map.forEach { (key, value) ->
+            when (value) {
+                is String -> editor.putString(key, value)
+                is Boolean -> editor.putBoolean(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Float -> editor.putFloat(key, value)
+            }
+        }
+        editor.apply()
+        
+        // Update all flows
+        _currency.value = prefs.getString("selected_currency", "USD") ?: "USD"
+        _currencySymbol.value = prefs.getString("selected_currency_symbol", "$") ?: "$"
+        _themeMode.value = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
+        _decimalPlaces.value = prefs.getInt("decimal_places", 2)
+        _weekStartDay.value = prefs.getString("week_start_day", "MONDAY") ?: "MONDAY"
+        _dateFormat.value = prefs.getString("date_format", "MMM dd, yyyy") ?: "MMM dd, yyyy"
+        _autoCategorize.value = prefs.getBoolean("auto_categorize", true)
+        _defaultTransactionType.value = prefs.getString("default_transaction_type", "EXPENSE") ?: "EXPENSE"
+        _hapticFeedback.value = prefs.getBoolean("haptic_feedback", true)
+        _displayName.value = prefs.getString("display_name", "") ?: ""
+        _avatarColorHex.value = prefs.getString("avatar_color_hex", "#0D9488") ?: "#0D9488"
+        _profilePictureUri.value = prefs.getString("profile_picture_uri", null)
+    }
+
     fun getUserSettingsBackup(): UserSettingsBackup {
         return UserSettingsBackup(
             currency = _currency.value,

@@ -61,6 +61,11 @@ class UpdateRepository(
     }
 
     /**
+     * Expose a reactive stream of the release history directly from Firebase.
+     */
+    val releaseHistoryFlow: kotlinx.coroutines.flow.StateFlow<List<VersionReleaseLog>> = firebaseConfigManager.releaseHistory
+
+    /**
      * Complete changelog history of the app.
      * Uses Realtime DB changelog if available, else falls back to default release logs.
      */

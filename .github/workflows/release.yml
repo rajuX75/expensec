@@ -91,10 +91,10 @@ jobs:
           VERSION_NAME=$(grep "versionName =" app/build.gradle.kts | awk -F '"' '{print $2}')
           
           # Get the latest commit message
-          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+          COMMIT_MSG=$(git log -1 --pretty=%B)
           
-          # Create changes array with jq (array of strings)
-          CHANGES_JSON=$(jq -n --arg msg "$COMMIT_MSG" '[$msg]')
+          # Convert multiline commit message into a JSON array of strings
+          CHANGES_JSON=$(echo "$COMMIT_MSG" | jq -R -s -c 'split("\n") | map(select(length > 0))')
           
           PAYLOAD=$(jq -n \
             --arg vc "$VERSION_CODE" \

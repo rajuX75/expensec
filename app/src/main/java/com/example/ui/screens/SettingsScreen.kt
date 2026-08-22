@@ -69,6 +69,7 @@ fun SettingsScreen(
     val updateDownloadState by viewModel.updateDownloadState.collectAsState()
     val autoCheckUpdates by viewModel.autoCheckUpdates.collectAsState()
     val lastUpdateCheckTime by viewModel.lastUpdateCheckTime.collectAsState()
+    val releaseHistory by viewModel.releaseHistory.collectAsState()
 
     var showCurrencyDialog by remember { mutableStateOf(false) }
     var showCategoryDialog by remember { mutableStateOf(false) }
@@ -326,12 +327,16 @@ fun SettingsScreen(
                     SettingsItem(
                         icon = Icons.Default.CalendarToday,
                         title = "First Day of Week",
-                        subtitle = if (weekStartDay == "MONDAY") "Monday" else "Sunday",
+                        subtitle = when (weekStartDay) {
+                            "MONDAY" -> "Monday"
+                            "SATURDAY" -> "Saturday"
+                            else -> "Sunday"
+                        },
                         iconTint = Color(0xFF0D9488),
                         onClick = { expandedWeek = true }
                     )
                     DropdownMenu(expanded = expandedWeek, onDismissRequest = { expandedWeek = false }) {
-                        listOf("MONDAY" to "Monday", "SUNDAY" to "Sunday").forEach { (day, label) ->
+                        listOf("MONDAY" to "Monday", "SUNDAY" to "Sunday", "SATURDAY" to "Saturday").forEach { (day, label) ->
                             DropdownMenuItem(
                                 text = { Text(label) },
                                 leadingIcon = { if (day == weekStartDay) Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) },
@@ -820,7 +825,7 @@ fun SettingsScreen(
     // What's New & Changelog Dialog
     if (showChangelogDialog) {
         com.example.ui.components.ChangelogDialog(
-            releaseHistory = viewModel.releaseHistory,
+            releaseHistory = releaseHistory,
             onDismiss = { showChangelogDialog = false }
         )
     }

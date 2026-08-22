@@ -61,6 +61,9 @@ class FirestoreSyncManager(
             activeListeners.add(shopBakiSyncer.attachShopsRealtimeListener(userId, scope))
             activeListeners.add(shopBakiSyncer.attachProductsRealtimeListener(userId, scope))
             activeListeners.add(shopBakiSyncer.attachEntriesRealtimeListener(userId, scope))
+            
+            // Add preferences realtime listener and set up two-way sync
+            activeListeners.add(attachPreferencesRealtimeListener(userId, scope))
 
             Log.d(tag, "Started all realtime Firestore sync listeners for user: $userId")
         } catch (e: Exception) {
@@ -68,7 +71,50 @@ class FirestoreSyncManager(
         }
     }
 
+    private var prefChangeListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
+
+    private fun attachPreferencesRealtimeListener(userId: String, scope: CoroutineScope): ListenerRegistration {
+        val docRef = firestore.collection("users").document(userId).collection("preferences").document("config")
+        
+        // Initial sync: fetch from cloud and apply if exists, else upload local defaults
+        scope.launch(Dispatchers.IO) {
+            try {
+                val snapshot = docRef.get().kotlinx.coroutines.tasks.await()
+                if (snapshot.exists()) {
+                    snapshot.data?.let { userPrefs.restorePrefs(it) }
+                } else {
+                    docRef.set(userPrefs.getAllPrefs()).kotlinx.coroutines.tasks.await()
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Failed to sync preferences initially", e)
+            }
+        }
+
+        // Listen for local changes and push to cloud
+        prefChangeListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+            scope.launch(Dispatchers.IO) {
+                try {
+                    docRef.set(userPrefs.getAllPrefs()).kotlinx.coroutines.tasks.await()
+                } catch (e: Exception) {
+                    Log.e(tag, "Failed to upload preferences", e)
+                }
+            }
+        }
+        userPrefs.registerPrefChangeListener(prefChangeListener!!)
+
+        // Listen for cloud changes (from other devices) and apply locally
+        return docRef.addSnapshotListener { snapshot, error ->
+            if (error != null) return@addSnapshotListener
+            if (snapshot != null && snapshot.exists() && !snapshot.metadata.hasPendingWrites()) {
+                snapshot.data?.let { userPrefs.restorePrefs(it) }
+            }
+        }
+    }
+
     fun stopRealtimeSync() {
+        prefChangeListener?.let { userPrefs.unregisterPrefChangeListener(it) }
+        prefChangeListener = null
+
         for (listener in activeListeners) {
             try {
                 listener.remove()
