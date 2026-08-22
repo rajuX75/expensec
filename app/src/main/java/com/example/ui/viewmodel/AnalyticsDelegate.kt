@@ -54,22 +54,33 @@ class AnalyticsDelegate(
     private val allBudgets: StateFlow<List<BudgetEntity>>
 ) {
     // Net Financial Overview Metrics
+    // OPTIMIZATION: Use month boundary timestamps for fast range checks (O(1) per transaction with 0 Calendar allocations in loop)
     val financialSummary: StateFlow<FinancialSummary> = combine(
         allTransactions,
         allAccounts
     ) { transactions, accounts ->
         val now = Calendar.getInstance()
-        val currentYear = now.get(Calendar.YEAR)
-        val currentMonth = now.get(Calendar.MONTH)
+        val startOfMonth = (now.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val startOfNextMonth = (now.clone() as Calendar).apply {
+            add(Calendar.MONTH, 1)
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
 
         var totalIncomeMonth = 0.0
         var totalExpenseMonth = 0.0
 
         transactions.forEach { tx ->
-            val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-            val isCurrentMonth = txCal.get(Calendar.YEAR) == currentYear && txCal.get(Calendar.MONTH) == currentMonth
-
-            if (isCurrentMonth) {
+            if (tx.date >= startOfMonth && tx.date < startOfNextMonth) {
                 if (tx.type.equals("INCOME", ignoreCase = true)) {
                     totalIncomeMonth += tx.amount
                 } else if (tx.type.equals("EXPENSE", ignoreCase = true)) {
@@ -94,27 +105,42 @@ class AnalyticsDelegate(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FinancialSummary(0.0, 0.0, 0.0, 0.0, 0.0))
 
     // Dynamic Account Balances (Account + Transactions)
+    // OPTIMIZATION: Single O(N) pass to accumulate transaction deltas and counts, reducing complexity from O(M * N) to O(N + M)
     val accountsWithBalances: StateFlow<List<AccountWithBalance>> = combine(
         allAccounts,
         allTransactions
     ) { accounts, transactions ->
-        accounts.map { acc ->
-            var bal = acc.balance
-            var count = 0
-            transactions.forEach { tx ->
-                if (tx.accountId == acc.id) {
-                    count++
-                    when (tx.type.uppercase()) {
-                        "INCOME" -> bal += tx.amount
-                        "EXPENSE" -> bal -= tx.amount
-                        "TRANSFER" -> bal -= tx.amount
+        val balanceDeltas = HashMap<Long, Double>()
+        val txCounts = HashMap<Long, Int>()
+
+        transactions.forEach { tx ->
+            when (tx.type.uppercase()) {
+                "INCOME" -> {
+                    balanceDeltas[tx.accountId] = (balanceDeltas[tx.accountId] ?: 0.0) + tx.amount
+                    txCounts[tx.accountId] = (txCounts[tx.accountId] ?: 0) + 1
+                }
+                "EXPENSE" -> {
+                    balanceDeltas[tx.accountId] = (balanceDeltas[tx.accountId] ?: 0.0) - tx.amount
+                    txCounts[tx.accountId] = (txCounts[tx.accountId] ?: 0) + 1
+                }
+                "TRANSFER" -> {
+                    balanceDeltas[tx.accountId] = (balanceDeltas[tx.accountId] ?: 0.0) - tx.amount
+                    txCounts[tx.accountId] = (txCounts[tx.accountId] ?: 0) + 1
+
+                    tx.toAccountId?.let { toId ->
+                        balanceDeltas[toId] = (balanceDeltas[toId] ?: 0.0) + tx.amount
+                        txCounts[toId] = (txCounts[toId] ?: 0) + 1
                     }
-                } else if (tx.toAccountId == acc.id && tx.type.equals("TRANSFER", ignoreCase = true)) {
-                    count++
-                    bal += tx.amount
                 }
             }
-            AccountWithBalance(account = acc, liveBalance = bal, transactionCount = count)
+        }
+
+        accounts.map { acc ->
+            AccountWithBalance(
+                account = acc,
+                liveBalance = acc.balance + (balanceDeltas[acc.id] ?: 0.0),
+                transactionCount = txCounts[acc.id] ?: 0
+            )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -126,29 +152,51 @@ class AnalyticsDelegate(
         _analyticsPeriod.value = period
     }
 
+    // OPTIMIZATION: Pre-calculate period boundary timestamps once; use HashMap category lookups for O(1) metadata fetching
     val categorySpendingData: StateFlow<List<ChartCategoryData>> = combine(
         allTransactions,
         _analyticsPeriod,
         allCategories
     ) { transactions, period, categories ->
         val now = Calendar.getInstance()
-        val filtered = transactions.filter { tx ->
-            if (!tx.type.equals("EXPENSE", ignoreCase = true)) return@filter false
-            val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-            when (period) {
-                "THIS_MONTH" -> txCal.get(Calendar.YEAR) == now.get(Calendar.YEAR) && txCal.get(Calendar.MONTH) == now.get(Calendar.MONTH)
-                "LAST_MONTH" -> {
-                    val lastM = Calendar.getInstance().apply { add(Calendar.MONTH, -1) }
-                    txCal.get(Calendar.YEAR) == lastM.get(Calendar.YEAR) && txCal.get(Calendar.MONTH) == lastM.get(Calendar.MONTH)
-                }
-                "THIS_YEAR" -> txCal.get(Calendar.YEAR) == now.get(Calendar.YEAR)
-                else -> true
+        val (startMs, endMs) = when (period) {
+            "THIS_MONTH" -> {
+                val start = (now.clone() as Calendar).apply {
+                    set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                val end = (now.clone() as Calendar).apply {
+                    add(Calendar.MONTH, 1); set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                start to end
             }
+            "LAST_MONTH" -> {
+                val start = (now.clone() as Calendar).apply {
+                    add(Calendar.MONTH, -1); set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                val end = (now.clone() as Calendar).apply {
+                    set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                start to end
+            }
+            "THIS_YEAR" -> {
+                val start = (now.clone() as Calendar).apply {
+                    set(Calendar.DAY_OF_YEAR, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                val end = (now.clone() as Calendar).apply {
+                    add(Calendar.YEAR, 1); set(Calendar.DAY_OF_YEAR, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                start to end
+            }
+            else -> Long.MIN_VALUE to Long.MAX_VALUE
+        }
+
+        val filtered = transactions.filter { tx ->
+            tx.type.equals("EXPENSE", ignoreCase = true) && tx.date >= startMs && tx.date < endMs
         }
 
         val totalSpent = filtered.sumOf { it.amount }
-        val categoryMap = mutableMapOf<String, Double>()
-        val categoryInfoMap = mutableMapOf<String, Pair<String, String>>() // Name -> (icon, color)
+        val categoryMap = HashMap<String, Double>()
+        val categoryInfoMap = HashMap<String, Pair<String, String>>() // Name -> (icon, color)
 
         filtered.forEach { tx ->
             val name = tx.categoryName.ifBlank { "Other" }
@@ -158,9 +206,11 @@ class AnalyticsDelegate(
             }
         }
 
+        val catMapByName = categories.associateBy { it.name.lowercase() }
+
         categoryMap.entries.map { (name, amount) ->
             val info = categoryInfoMap[name]
-            val catEntity = categories.find { it.name.equals(name, ignoreCase = true) }
+            val catEntity = catMapByName[name.lowercase()]
             val colorHex = catEntity?.colorHex ?: info?.second ?: "#64748B"
             val iconName = catEntity?.iconName ?: info?.first ?: "category"
             val percentage = if (totalSpent > 0) ((amount / totalSpent) * 100).toFloat() else 0f
@@ -176,93 +226,131 @@ class AnalyticsDelegate(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Monthly Trend Chart Data (Last 6 Months)
+    // OPTIMIZATION: Pre-calculate 6-month timestamp boundaries; single O(N) pass over transactions with zero Calendar allocations in loop
     val monthlyTrendsData: StateFlow<List<BarChartEntry>> = allTransactions.map { transactions ->
         val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
         val entries = mutableListOf<BarChartEntry>()
 
-        for (i in 5 downTo 0) {
-            val cal = Calendar.getInstance().apply {
+        class TargetMonth(val label: String, val startMs: Long, val endMs: Long)
+        val months = Array(6) { idx ->
+            val i = 5 - idx
+            val calStart = Calendar.getInstance().apply {
                 add(Calendar.MONTH, -i)
+                set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             }
-            val targetYear = cal.get(Calendar.YEAR)
-            val targetMonth = cal.get(Calendar.MONTH)
-            val label = monthFormat.format(cal.time)
+            val calEnd = (calStart.clone() as Calendar).apply {
+                add(Calendar.MONTH, 1)
+            }
+            TargetMonth(
+                label = monthFormat.format(calStart.time),
+                startMs = calStart.timeInMillis,
+                endMs = calEnd.timeInMillis
+            )
+        }
 
-            var expenseSum = 0.0
-            var incomeSum = 0.0
+        val expenseSums = DoubleArray(6)
+        val incomeSums = DoubleArray(6)
 
-            transactions.forEach { tx ->
-                val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-                if (txCal.get(Calendar.YEAR) == targetYear && txCal.get(Calendar.MONTH) == targetMonth) {
-                    if (tx.type.equals("EXPENSE", ignoreCase = true)) {
-                        expenseSum += tx.amount
-                    } else if (tx.type.equals("INCOME", ignoreCase = true)) {
-                        incomeSum += tx.amount
+        transactions.forEach { tx ->
+            val txDate = tx.date
+            val isExpense = tx.type.equals("EXPENSE", ignoreCase = true)
+            val isIncome = if (!isExpense) tx.type.equals("INCOME", ignoreCase = true) else false
+
+            if (isExpense || isIncome) {
+                for (idx in 0 until 6) {
+                    val m = months[idx]
+                    if (txDate >= m.startMs && txDate < m.endMs) {
+                        if (isExpense) expenseSums[idx] += tx.amount
+                        else incomeSums[idx] += tx.amount
+                        break
                     }
                 }
             }
+        }
 
-            entries.add(BarChartEntry(label = label, expense = expenseSum, income = incomeSum))
+        for (idx in 0 until 6) {
+            entries.add(BarChartEntry(label = months[idx].label, expense = expenseSums[idx], income = incomeSums[idx]))
         }
 
         entries
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Monthly Category Trends Data (Recharts style breakdown by category across last 6 months)
+    // OPTIMIZATION: Single-pass bucket aggregation with 0 Calendar allocations in transaction loop & O(1) category metadata map
     val monthlyCategoryTrendsData: StateFlow<Pair<List<MonthlyCategoryTrendEntry>, List<CategoryTrendMeta>>> = combine(
         allTransactions,
         allCategories
     ) { transactions, categories ->
         val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
         val entries = mutableListOf<MonthlyCategoryTrendEntry>()
-        val categoryTotals = mutableMapOf<String, Double>()
-        val categoryInfo = mutableMapOf<String, Pair<String, String>>() // Name -> (icon, color)
+        val categoryTotals = HashMap<String, Double>()
+        val categoryInfo = HashMap<String, Pair<String, String>>() // Name -> (icon, color)
 
         categories.forEach { cat ->
             categoryInfo[cat.name] = Pair(cat.iconName, cat.colorHex)
         }
 
-        for (i in 5 downTo 0) {
-            val cal = Calendar.getInstance().apply {
+        class TargetMonth(val label: String, val year: Int, val month: Int, val startMs: Long, val endMs: Long)
+        val months = Array(6) { idx ->
+            val i = 5 - idx
+            val calStart = Calendar.getInstance().apply {
                 add(Calendar.MONTH, -i)
+                set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             }
-            val targetYear = cal.get(Calendar.YEAR)
-            val targetMonth = cal.get(Calendar.MONTH)
-            val label = monthFormat.format(cal.time)
+            val calEnd = (calStart.clone() as Calendar).apply {
+                add(Calendar.MONTH, 1)
+            }
+            TargetMonth(
+                label = monthFormat.format(calStart.time),
+                year = calStart.get(Calendar.YEAR),
+                month = calStart.get(Calendar.MONTH),
+                startMs = calStart.timeInMillis,
+                endMs = calEnd.timeInMillis
+            )
+        }
 
-            val monthCategoryMap = mutableMapOf<String, Double>()
-            var monthTotal = 0.0
+        val monthCategoryMaps = Array(6) { HashMap<String, Double>() }
+        val monthTotals = DoubleArray(6)
 
-            transactions.forEach { tx ->
-                val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-                if (txCal.get(Calendar.YEAR) == targetYear && txCal.get(Calendar.MONTH) == targetMonth) {
-                    if (tx.type.equals("EXPENSE", ignoreCase = true)) {
+        transactions.forEach { tx ->
+            if (tx.type.equals("EXPENSE", ignoreCase = true)) {
+                val txDate = tx.date
+                for (idx in 0 until 6) {
+                    val m = months[idx]
+                    if (txDate >= m.startMs && txDate < m.endMs) {
                         val catName = tx.categoryName.ifBlank { "Other" }
-                        monthCategoryMap[catName] = (monthCategoryMap[catName] ?: 0.0) + tx.amount
+                        val currentCatAmount = monthCategoryMaps[idx][catName] ?: 0.0
+                        monthCategoryMaps[idx][catName] = currentCatAmount + tx.amount
                         categoryTotals[catName] = (categoryTotals[catName] ?: 0.0) + tx.amount
-                        monthTotal += tx.amount
+                        monthTotals[idx] += tx.amount
 
                         if (!categoryInfo.containsKey(catName)) {
                             categoryInfo[catName] = Pair(tx.categoryIcon, tx.categoryColorHex)
                         }
+                        break
                     }
                 }
             }
+        }
 
+        for (idx in 0 until 6) {
+            val m = months[idx]
             entries.add(
                 MonthlyCategoryTrendEntry(
-                    monthLabel = label,
-                    year = targetYear,
-                    month = targetMonth,
-                    totalExpense = monthTotal,
-                    categoryAmounts = monthCategoryMap
+                    monthLabel = m.label,
+                    year = m.year,
+                    month = m.month,
+                    totalExpense = monthTotals[idx],
+                    categoryAmounts = monthCategoryMaps[idx]
                 )
             )
         }
 
+        val catMapByName = categories.associateBy { it.name.lowercase() }
+
         val metaList = categoryTotals.entries.map { (catName, total) ->
             val info = categoryInfo[catName]
-            val catEntity = categories.find { it.name.equals(catName, ignoreCase = true) }
+            val catEntity = catMapByName[catName.lowercase()]
             CategoryTrendMeta(
                 name = catName,
                 colorHex = catEntity?.colorHex ?: info?.second ?: "#64748B",
@@ -275,7 +363,7 @@ class AnalyticsDelegate(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Pair(emptyList(), emptyList()))
 
     val topMerchants: StateFlow<List<MerchantSpending>> = allTransactions.map { transactions ->
-        val merchantMap = mutableMapOf<String, Pair<Double, Int>>()
+        val merchantMap = HashMap<String, Pair<Double, Int>>()
         transactions.filter { it.type.equals("EXPENSE", ignoreCase = true) && it.merchant.isNotBlank() }
             .forEach { tx ->
                 val current = merchantMap[tx.merchant] ?: Pair(0.0, 0)
@@ -286,28 +374,38 @@ class AnalyticsDelegate(
         }.sortedByDescending { it.amount }.take(5)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // OPTIMIZATION: Pre-filter transactions for current month once in O(N); calculate budget statuses in O(B) without Calendar object allocations in loop
     val budgetStatuses: StateFlow<List<BudgetStatus>> = combine(
         allBudgets,
         allTransactions
     ) { budgets, transactions ->
         val now = Calendar.getInstance()
-        val currentYear = now.get(Calendar.YEAR)
-        val currentMonth = now.get(Calendar.MONTH)
+        val startOfMonth = (now.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val startOfNextMonth = (now.clone() as Calendar).apply {
+            add(Calendar.MONTH, 1); set(Calendar.DAY_OF_MONTH, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val spentByCatId = HashMap<Long, Double>()
+        val spentByCatName = HashMap<String, Double>()
+        var overallSpent = 0.0
+
+        transactions.forEach { tx ->
+            if (tx.type.equals("EXPENSE", ignoreCase = true) && tx.date >= startOfMonth && tx.date < startOfNextMonth) {
+                overallSpent += tx.amount
+                spentByCatId[tx.categoryId] = (spentByCatId[tx.categoryId] ?: 0.0) + tx.amount
+                val nameLower = tx.categoryName.lowercase()
+                spentByCatName[nameLower] = (spentByCatName[nameLower] ?: 0.0) + tx.amount
+            }
+        }
 
         budgets.map { budget ->
-            val spent = transactions.filter { tx ->
-                if (!tx.type.equals("EXPENSE", ignoreCase = true)) return@filter false
-                val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-                val isInPeriod = txCal.get(Calendar.YEAR) == currentYear && txCal.get(Calendar.MONTH) == currentMonth
-
-                if (!isInPeriod) return@filter false
-
-                if (budget.categoryId == null) {
-                    true // Overall budget
-                } else {
-                    tx.categoryId == budget.categoryId || tx.categoryName.equals(budget.categoryName, ignoreCase = true)
-                }
-            }.sumOf { it.amount }
+            val spent = if (budget.categoryId == null) {
+                overallSpent
+            } else {
+                spentByCatId[budget.categoryId] ?: spentByCatName[budget.categoryName?.lowercase() ?: ""] ?: 0.0
+            }
 
             val remaining = budget.amountLimit - spent
             val percentage = if (budget.amountLimit > 0) ((spent / budget.amountLimit) * 100).toFloat() else 0f
