@@ -8,9 +8,9 @@
 ![Firebase](https://img.shields.io/badge/Cloud-Firestore%20%2B%20RTDB-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
-**A private, local-first personal financial manager with real-time Firebase cloud synchronization, Dhaar (debt & loan) tracking, custom avatars, and in-app smart updates.**
+**A private, local-first personal financial manager with real-time Firebase cloud synchronization, Dhaar (debt & loan) tracking, Shop Baki tracking, custom avatars, and in-app smart updates.**
 
-[Download Latest APK](https://github.com/rajuX75/expensec/releases/latest/download/expense-tracker-release.apk) • [Features](#-key-features) • [Architecture](#-architecture) • [Firebase Setup](#-firebase-configuration) • [Building & Running](#-building--running) • [Documentation](#-legal--documentation)
+[Download Latest APK](https://github.com/rajuX75/expensec/releases/latest/download/expense-tracker-release.apk) • [Features](#-key-features) • [Architecture](#-architecture) • [Firebase Setup](#-firebase-configuration) • [Building & CI/CD](#-building--cicd) • [Documentation](#-legal--documentation)
 
 </div>
 
@@ -31,18 +31,24 @@
 - **One-Tap Settle Up**: Record partial or full repayments with automated ledger balancing.
 - **Safe Phone Contact Picker**: Permission-free, crash-safe Android contact picker integration.
 
-### ☁️ 3. Real-Time Firebase Cloud Sync
+### 🛒 3. Shop Baki (Shop Credit Tracker)
+- **Track Shop Debts**: Manage running credit balances (Baki) across different local shops, stores, or vendors.
+- **Rich Shop Profiles**: Add custom cover images, profile pictures, verified badges, emails, categories, and business IDs.
+- **Product Inventory**: Define common products with default units and prices for quick purchase logging.
+- **Ledger Entries**: Log individual purchases and payments to maintain a precise, chronological history of what you bought and what you paid.
+
+### ☁️ 4. Real-Time Firebase Cloud Sync
 - **Google Sign-In**: Authenticate seamlessly via Android Credential Manager.
 - **Automatic Profile Population**: Display name, Google email, and profile avatar are automatically configured on login.
 - **Firestore Cloud Sync**: Encrypted, user-isolated bidirectional cloud synchronization across all personal devices.
 
-### 🚀 4. Smart Versioning & In-App Updates
+### 🚀 5. Smart Versioning & In-App Updates
 - **Firebase Realtime Database Driven**: Remote versioning and configuration powered by Firebase RTDB (`/app_version`, `/app_config`, `/changelog`).
 - **Flexible & Mandatory Updates**: Supports critical forced updates as well as skippable flexible releases.
 - **Direct Auto-Download & Install**: Downloads release APKs with real-time progress indicators and automatically triggers Android package installation.
 - **What's New Changelog**: Interactive release notes viewer with category color badges (New, Improved, Fix).
 
-### 🔒 5. Privacy & Security
+### 🔒 6. Privacy & Security
 - **Local-First Sandboxed Storage**: Zero data sold to third-party ad networks.
 - **PIN Lock Protection**: 4-digit salted-hash PIN lock to secure app access.
 - **Persistent Media**: Images are saved in private internal storage (`filesDir`), preventing disappearance across app restarts.
@@ -55,15 +61,15 @@
 ```
 com.example/
 ├── data/
-│   ├── cloud/             # FirestoreSyncManager, GoogleAuthManager, FirebaseConfigManager
+│   ├── cloud/             # FirestoreSyncManager, ShopBakiSyncer, GoogleAuthManager
 │   ├── local/             # Room Database, AppDatabase, DAOs, Entities
-│   ├── model/             # Domain & UI Models, UpdateModels, LegalDocs
-│   └── repository/        # ExpenseRepository, DhaarRepository, UpdateRepository, UserPrefs
+│   ├── model/             # Domain & UI Models, ShopBakiModels, UpdateModels
+│   └── repository/        # ExpenseRepository, DhaarRepository, UserPrefs
 ├── ui/
-│   ├── components/        # UpdateDialog, ChangelogDialog, LegalDocsDialog, Charts, ImageStorage
-│   ├── screens/           # Dashboard, Transactions, Analytics, Dhaar, Profile, Settings
+│   ├── components/        # UpdateDialog, ChangelogDialog, Charts, ImageStorage
+│   ├── screens/           # Dashboard, Transactions, Analytics, Dhaar, ShopBaki
 │   ├── theme/             # Material 3 Color Schemes, Typography, Shape Definitions
-│   └── viewmodel/         # ExpenseViewModel (Single Source of Truth)
+│   └── viewmodel/         # ExpenseViewModel (Single Source of Truth) + Delegates
 └── MainActivity.kt        # Jetpack Compose Navigation Host
 ```
 
@@ -84,13 +90,13 @@ Import [`firebase_realtime_db_template.json`](./firebase_realtime_db_template.js
 ```json
 {
   "app_version": {
-    "versionCode": 1,
-    "versionName": "1.0.0",
+    "versionCode": 2,
+    "versionName": "1.1.0",
     "minSupportedVersionCode": 1,
-    "releaseTitle": "v1.0.0 — Initial Official Release",
-    "releaseNotes": "• Clean local-first financial manager\n• Zero-balance start\n• Real-time cloud sync\n• In-app smart updates",
+    "releaseTitle": "v1.1.0 — Shop Baki Feature",
+    "releaseNotes": "• New Shop Baki Tracker\n• Custom Cover and Profile Images for Shops\n• CI/CD Automated Releases",
     "downloadUrl": "https://github.com/rajuX75/expensec/releases/latest/download/expense-tracker-release.apk",
-    "releaseDate": "2026-08-19",
+    "releaseDate": "2026-08-22",
     "apkSizeMb": 20.1,
     "isMandatory": false
   }
@@ -125,14 +131,14 @@ Paste the contents of [`firebase_database_rules.json`](./firebase_database_rules
 
 ---
 
-## 🛠️ Building & Running
+## 🛠️ Building & CI/CD
 
 ### Prerequisites
 - [Android Studio Ladybug (2024.2+) or newer](https://developer.android.com/studio)
 - JDK 17 or JDK 21
 - Android SDK 35/36 installed
 
-### Build Release APK
+### Local Build
 ```bash
 # Clone the repository
 git clone https://github.com/rajuX75/expensec.git
@@ -141,7 +147,21 @@ cd expensec
 # Build signed release APK
 ./gradlew assembleRelease
 ```
-The output APK will be located at `app/build/outputs/apk/release/app-release.apk` and copied to `releases/expense-tracker-release.apk`.
+The output APK will be located at `app/build/outputs/apk/release/app-release.apk`.
+
+### Automated GitHub Actions Releases
+This repository includes a fully automated CI/CD pipeline using **GitHub Actions**. On every push to the `main` branch, the pipeline will:
+1. Compile and build the release APK.
+2. Draft a new release on GitHub using the version tag from `build.gradle.kts`.
+3. Upload the APK to the release.
+
+To enable production signing in the automated pipeline, add the following Repository Secrets to GitHub (**Settings > Secrets and variables > Actions > New repository secret**):
+- `KEYSTORE_BASE64`: The base64-encoded string of your release `.jks` file.
+- `STORE_PASSWORD`: Keystore password.
+- `KEY_ALIAS`: Key alias.
+- `KEY_PASSWORD`: Key password.
+
+*(If these secrets are omitted, the action will safely fall back to debug signing).*
 
 ---
 
