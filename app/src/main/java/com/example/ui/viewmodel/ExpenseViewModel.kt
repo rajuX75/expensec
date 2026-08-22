@@ -51,6 +51,21 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val firebaseConfigManager = com.example.data.cloud.FirebaseConfigManager(application, viewModelScope)
     val updateRepository = com.example.data.repository.UpdateRepository(application, userPrefs, firebaseConfigManager)
 
+    init {
+        val uploadWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.data.cloud.FirebaseImageUploadWorker>()
+            .setConstraints(
+                androidx.work.Constraints.Builder()
+                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+        androidx.work.WorkManager.getInstance(application).enqueueUniqueWork(
+            "FirebaseImageUpload",
+            androidx.work.ExistingWorkPolicy.KEEP,
+            uploadWorkRequest
+        )
+    }
+
     // User Preferences
     val currency = userPrefs.currency
     val currencySymbol = userPrefs.currencySymbol

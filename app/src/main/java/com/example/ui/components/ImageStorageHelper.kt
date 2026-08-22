@@ -2,25 +2,28 @@ package com.example.ui.components
 
 import android.content.Context
 import android.net.Uri
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
 import java.util.UUID
 
 object ImageStorageHelper {
 
     /**
-     * Copies an image from a transient Uri (e.g. from gallery picker)
-     * into the app's internal persistent directory.
-     * Returns the permanent local file Uri string (file://...) or null if copy fails.
+     * Copies an image locally, then attempts to upload it to Firebase Cloud Storage.
+     * Returns the Firebase Storage download URL on success. 
+     * If upload fails or user is not logged in, returns the persistent local file Uri.
      */
     suspend fun saveImageLocally(
         context: Context,
         sourceUri: Uri,
         folderName: String = "photos"
     ): String? = withContext(Dispatchers.IO) {
+        var localUri: String? = null
         try {
             val folder = File(context.filesDir, folderName).apply {
                 if (!exists()) mkdirs()
@@ -32,13 +35,29 @@ object ImageStorageHelper {
                 FileOutputStream(destFile).use { outputStream ->
                     inputStream.copyTo(outputStream)
                 }
-                return@withContext Uri.fromFile(destFile).toString()
+                localUri = Uri.fromFile(destFile).toString()
             }
-            null
         } catch (e: Exception) {
             e.printStackTrace()
-            // Fallback to original Uri string if copy fails
-            sourceUri.toString()
+            localUri = sourceUri.toString() // Fallback to original
         }
+
+        // Attempt to upload to Firebase Storage for permanent cross-device syncing
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user != null && localUri != null && localUri!!.startsWith("file://")) {
+            try {
+                val storageRef = FirebaseStorage.getInstance().reference
+                    .child("users/${user.uid}/$folderName/${UUID.randomUUID()}.jpg")
+                storageRef.putFile(Uri.parse(localUri)).await()
+                val downloadUrl = storageRef.downloadUrl.await()
+                return@withContext downloadUrl.toString() // Return the cloud URL!
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // If upload fails (e.g. offline), we fall back to returning the local URI below.
+                // In a production app, you might queue a background Worker to upload this later.
+            }
+        }
+
+        localUri
     }
 }
