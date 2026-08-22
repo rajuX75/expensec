@@ -11,6 +11,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.tasks.await
 
 enum class SyncState {
     IDLE,
@@ -79,11 +80,14 @@ class FirestoreSyncManager(
         // Initial sync: fetch from cloud and apply if exists, else upload local defaults
         scope.launch(Dispatchers.IO) {
             try {
-                val snapshot = docRef.get().kotlinx.coroutines.tasks.await()
+                val snapshot = docRef.get().await()
                 if (snapshot.exists()) {
-                    snapshot.data?.let { userPrefs.restorePrefs(it) }
+                    val data = snapshot.data
+                    if (data != null) {
+                        userPrefs.restorePrefs(data as Map<String, Any?>)
+                    }
                 } else {
-                    docRef.set(userPrefs.getAllPrefs()).kotlinx.coroutines.tasks.await()
+                    docRef.set(userPrefs.getAllPrefs()).await()
                 }
             } catch (e: Exception) {
                 Log.e(tag, "Failed to sync preferences initially", e)
@@ -94,7 +98,7 @@ class FirestoreSyncManager(
         prefChangeListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
             scope.launch(Dispatchers.IO) {
                 try {
-                    docRef.set(userPrefs.getAllPrefs()).kotlinx.coroutines.tasks.await()
+                    docRef.set(userPrefs.getAllPrefs()).await()
                 } catch (e: Exception) {
                     Log.e(tag, "Failed to upload preferences", e)
                 }
@@ -106,7 +110,10 @@ class FirestoreSyncManager(
         return docRef.addSnapshotListener { snapshot, error ->
             if (error != null) return@addSnapshotListener
             if (snapshot != null && snapshot.exists() && !snapshot.metadata.hasPendingWrites()) {
-                snapshot.data?.let { userPrefs.restorePrefs(it) }
+                val data = snapshot.data
+                if (data != null) {
+                    userPrefs.restorePrefs(data as Map<String, Any?>)
+                }
             }
         }
     }
