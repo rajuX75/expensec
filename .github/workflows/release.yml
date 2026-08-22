@@ -44,21 +44,31 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease
 
-      - name: Get App Version
+      - name: Get App Version & Changelog
         id: get_version
         run: |
           VERSION_NAME=$(grep "versionName =" app/build.gradle.kts | awk -F '"' '{print $2}')
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          
           # Create a dynamic tag based on the version name and short SHA
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "RELEASE_TAG=v${VERSION_NAME}-${SHORT_SHA}" >> $GITHUB_ENV
+          
+          # Get the latest commit message for the release notes
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          
+          # Safely write multiline string to GITHUB_ENV
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "COMMIT_MSG<<$EOF" >> $GITHUB_ENV
+          echo "$COMMIT_MSG" >> $GITHUB_ENV
+          echo "$EOF" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: Expense Tracker ${{ env.RELEASE_TAG }}
-          body: "Automated production release APK."
+          body: ${{ env.COMMIT_MSG }}
           files: app/build/outputs/apk/release/app-release.apk
           draft: false
           prerelease: false

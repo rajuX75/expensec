@@ -53,8 +53,19 @@ object ImageStorageHelper {
                 return@withContext downloadUrl.toString() // Return the cloud URL!
             } catch (e: Exception) {
                 e.printStackTrace()
-                // If upload fails (e.g. offline), we fall back to returning the local URI below.
-                // In a production app, you might queue a background Worker to upload this later.
+                // Upload failed (e.g., offline). Queue the worker to upload it later when connected.
+                val uploadWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.data.cloud.FirebaseImageUploadWorker>()
+                    .setConstraints(
+                        androidx.work.Constraints.Builder()
+                            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                            .build()
+                    )
+                    .build()
+                androidx.work.WorkManager.getInstance(context).enqueueUniqueWork(
+                    "FirebaseImageUpload",
+                    androidx.work.ExistingWorkPolicy.APPEND_OR_REPLACE,
+                    uploadWorkRequest
+                )
             }
         }
 
