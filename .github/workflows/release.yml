@@ -29,14 +29,14 @@ jobs:
           ENCODED_STRING: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -n "$ENCODED_STRING" ]; then
-            echo "$ENCODED_STRING" | base64 --decode > my-upload-key.jks
+            echo "$ENCODED_STRING" | base64 --decode > expense-tracker-release.jks
           else
             echo "KEYSTORE_BASE64 secret is not set! Release build will fall back to debug signing."
           fi
 
       - name: Build Release APK
         env:
-          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          KEYSTORE_PATH: ${{ github.workspace }}/expense-tracker-release.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
