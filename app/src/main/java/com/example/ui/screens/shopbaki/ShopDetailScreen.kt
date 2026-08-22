@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
 import com.example.data.model.Shop
 import com.example.data.model.ShopTimelineItem
 import com.example.ui.theme.ExpenseRed
@@ -103,11 +104,90 @@ fun ShopDetailScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // Header with Cover and Profile Picture
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
+                if (!shop?.coverImageUri.isNullOrBlank()) {
+                    coil.compose.AsyncImage(
+                        model = shop?.coverImageUri,
+                        contentDescription = "Cover Image",
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                    )
+                }
+
+                // Profile Picture overlapping the cover
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(y = 10.dp)
+                ) {
+                    if (!shop?.profilePictureUri.isNullOrBlank()) {
+                        coil.compose.AsyncImage(
+                            model = shop?.profilePictureUri,
+                            contentDescription = "Profile Picture",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(4.dp)
+                                .clip(CircleShape)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(4.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = shop?.name?.take(1)?.uppercase() ?: "?",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                    
+                    if (shop?.isVerified == true) {
+                        Icon(
+                            Icons.Default.Verified,
+                            contentDescription = "Verified",
+                            tint = Color(0xFF1DA1F2),
+                            modifier = Modifier
+                                .size(24.dp)
+                                .align(Alignment.BottomEnd)
+                                .offset(x = (-4).dp, y = (-4).dp)
+                                .background(Color.White, CircleShape)
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Header: Current Due
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shadowElevation = 2.dp
@@ -140,8 +220,25 @@ fun ShopDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    
+                    if (!shop?.category.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text = shop?.category ?: "",
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
                 }
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Timeline List
             if (timelineItems.isEmpty()) {

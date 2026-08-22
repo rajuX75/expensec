@@ -14,6 +14,12 @@ data class Shop(
     val phoneNumber: String? = null,
     val address: String? = null,
     val note: String? = null,
+    val profilePictureUri: String? = null,
+    val coverImageUri: String? = null,
+    val email: String? = null,
+    val businessId: String? = null,
+    val category: String? = null,
+    val isVerified: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )
 

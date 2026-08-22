@@ -242,16 +242,40 @@ fun ShopListItemCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(46.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = shop.name.take(1).uppercase(),
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                Box {
+                    if (!shop.profilePictureUri.isNullOrBlank()) {
+                        coil.compose.AsyncImage(
+                            model = shop.profilePictureUri,
+                            contentDescription = "Profile Picture",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                        )
+                    } else {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(46.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = shop.name.take(1).uppercase(),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
+                    if (shop.isVerified) {
+                        Icon(
+                            Icons.Default.Verified,
+                            contentDescription = "Verified",
+                            tint = Color(0xFF1DA1F2),
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.BottomEnd)
+                                .background(Color.White, CircleShape)
                         )
                     }
                 }

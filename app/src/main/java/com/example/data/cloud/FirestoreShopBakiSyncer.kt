@@ -45,6 +45,12 @@ class FirestoreShopBakiSyncer(
                                     phoneNumber = data["phoneNumber"] as? String,
                                     address = data["address"] as? String,
                                     note = data["note"] as? String,
+                                    profilePictureUri = data["profilePictureUri"] as? String,
+                                    coverImageUri = data["coverImageUri"] as? String,
+                                    email = data["email"] as? String,
+                                    businessId = data["businessId"] as? String,
+                                    category = data["category"] as? String,
+                                    isVerified = data["isVerified"] as? Boolean ?: false,
                                     createdAt = (data["createdAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
                                 )
                                 if (existing != null) {
@@ -180,6 +186,12 @@ class FirestoreShopBakiSyncer(
                 "phoneNumber" to shop.phoneNumber,
                 "address" to shop.address,
                 "note" to shop.note,
+                "profilePictureUri" to shop.profilePictureUri,
+                "coverImageUri" to shop.coverImageUri,
+                "email" to shop.email,
+                "businessId" to shop.businessId,
+                "category" to shop.category,
+                "isVerified" to shop.isVerified,
                 "createdAt" to shop.createdAt,
                 "updatedAt" to System.currentTimeMillis()
             )
@@ -199,18 +211,27 @@ class FirestoreShopBakiSyncer(
                 phoneNumber = data["phoneNumber"] as? String,
                 address = data["address"] as? String,
                 note = data["note"] as? String,
+                profilePictureUri = data["profilePictureUri"] as? String,
+                coverImageUri = data["coverImageUri"] as? String,
+                email = data["email"] as? String,
+                businessId = data["businessId"] as? String,
+                category = data["category"] as? String,
+                isVerified = data["isVerified"] as? Boolean ?: false,
                 createdAt = (data["createdAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
             )
             if (existing != null) database.shopDao().updateShop(shop) else database.shopDao().insertShop(shop)
         }
+        
         // SAFETY: never run the delete pass when the server returned zero docs while local
         // data exists -- that would wipe local data on any failed/empty fetch.
         val shouldDeleteMissingShops = remoteShopUuids.isNotEmpty() || localShops.isEmpty()
-        if (shouldDeleteMissingShops) for (local in localShops) {
-            if (local.uuid.isNotBlank() && local.uuid !in remoteShopUuids) {
-                val entryCount = database.shopLedgerEntryDao().getEntryCountForShop(local.id)
-                if (entryCount == 0) {
-                    runCatching { database.shopDao().deleteShopByUuid(local.uuid) }
+        if (shouldDeleteMissingShops) {
+            for (local in localShops) {
+                if (local.uuid.isNotBlank() && local.uuid !in remoteShopUuids) {
+                    val entryCount = database.shopLedgerEntryDao().getEntryCountForShop(local.id)
+                    if (entryCount == 0) {
+                        runCatching { database.shopDao().deleteShopByUuid(local.uuid) }
+                    }
                 }
             }
         }
@@ -248,13 +269,16 @@ class FirestoreShopBakiSyncer(
             )
             if (existing != null) database.shopProductDao().updateProduct(product) else database.shopProductDao().insertProduct(product)
         }
+        
         // SAFETY: same empty-fetch guard as shops.
         val shouldDeleteMissingProducts = remoteProductUuids.isNotEmpty() || localProducts.isEmpty()
-        if (shouldDeleteMissingProducts) for (local in localProducts) {
-            if (local.uuid.isNotBlank() && local.uuid !in remoteProductUuids) {
-                val entryCount = database.shopLedgerEntryDao().getEntryCountForProduct(local.id)
-                if (entryCount == 0) {
-                    runCatching { database.shopProductDao().deleteProductByUuid(local.uuid) }
+        if (shouldDeleteMissingProducts) {
+            for (local in localProducts) {
+                if (local.uuid.isNotBlank() && local.uuid !in remoteProductUuids) {
+                    val entryCount = database.shopLedgerEntryDao().getEntryCountForProduct(local.id)
+                    if (entryCount == 0) {
+                        runCatching { database.shopProductDao().deleteProductByUuid(local.uuid) }
+                    }
                 }
             }
         }
@@ -311,9 +335,11 @@ class FirestoreShopBakiSyncer(
 
         // SAFETY: same empty-fetch guard as shops.
         val shouldDeleteMissingEntries = remoteEntryUuids.isNotEmpty() || localEntries.isEmpty()
-        if (shouldDeleteMissingEntries) for (local in localEntries) {
-            if (local.uuid.isNotBlank() && local.uuid !in remoteEntryUuids) {
-                runCatching { database.shopLedgerEntryDao().deleteEntryByUuid(local.uuid) }
+        if (shouldDeleteMissingEntries) {
+            for (local in localEntries) {
+                if (local.uuid.isNotBlank() && local.uuid !in remoteEntryUuids) {
+                    runCatching { database.shopLedgerEntryDao().deleteEntryByUuid(local.uuid) }
+                }
             }
         }
     }
@@ -328,6 +354,12 @@ class FirestoreShopBakiSyncer(
                     "phoneNumber" to shop.phoneNumber,
                     "address" to shop.address,
                     "note" to shop.note,
+                    "profilePictureUri" to shop.profilePictureUri,
+                    "coverImageUri" to shop.coverImageUri,
+                    "email" to shop.email,
+                    "businessId" to shop.businessId,
+                    "category" to shop.category,
+                    "isVerified" to shop.isVerified,
                     "createdAt" to shop.createdAt,
                     "updatedAt" to System.currentTimeMillis()
                 ), SetOptions.merge()).await()
