@@ -94,8 +94,9 @@ class FirestoreSyncManager(
             }
         }
 
-        // Listen for local changes and push to cloud
+        // Listen for local changes and push to cloud (skip if the change was from cloud restore)
         prefChangeListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+            if (userPrefs.isRestoringFromCloud) return@OnSharedPreferenceChangeListener
             scope.launch(Dispatchers.IO) {
                 try {
                     docRef.set(userPrefs.getAllPrefs()).await()

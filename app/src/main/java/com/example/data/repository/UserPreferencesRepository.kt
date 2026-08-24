@@ -341,32 +341,54 @@ class UserPreferencesRepository(context: Context) {
         return prefs.all
     }
 
+    /** Guards against triggering SharedPreferences listener during cloud restore (prevents infinite loop). */
+    @Volatile var isRestoringFromCloud: Boolean = false
+
     fun restorePrefs(map: Map<String, Any?>) {
-        val editor = prefs.edit()
-        map.forEach { (key, value) ->
-            when (value) {
-                is String -> editor.putString(key, value)
-                is Boolean -> editor.putBoolean(key, value)
-                is Int -> editor.putInt(key, value)
-                is Long -> editor.putLong(key, value)
-                is Float -> editor.putFloat(key, value)
+        isRestoringFromCloud = true
+        try {
+            val editor = prefs.edit()
+            map.forEach { (key, value) ->
+                when (value) {
+                    is String -> editor.putString(key, value)
+                    is Boolean -> editor.putBoolean(key, value)
+                    // Firestore returns all integers as Long; SharedPreferences uses Int for some keys.
+                    is Long -> {
+                        // Determine the correct type based on what's already stored.
+                        // If the key holds an Int in prefs, write as Int; otherwise write as Long.
+                        if (prefs.contains(key)) {
+                            try {
+                                editor.putInt(key, value.toInt())
+                            } catch (_: Exception) {
+                                editor.putLong(key, value)
+                            }
+                        } else {
+                            editor.putLong(key, value)
+                        }
+                    }
+                    is Int -> editor.putInt(key, value)
+                    is Float -> editor.putFloat(key, value)
+                    is Double -> editor.putFloat(key, value.toFloat())
+                }
             }
+            editor.apply()
+
+            // Update all StateFlows so the UI reacts immediately
+            _currency.value = prefs.getString("selected_currency", "USD") ?: "USD"
+            _currencySymbol.value = prefs.getString("selected_currency_symbol", "$") ?: "$"
+            _themeMode.value = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
+            _decimalPlaces.value = prefs.getInt("decimal_places", 2)
+            _weekStartDay.value = prefs.getString("week_start_day", "MONDAY") ?: "MONDAY"
+            _dateFormat.value = prefs.getString("date_format", "MMM dd, yyyy") ?: "MMM dd, yyyy"
+            _autoCategorize.value = prefs.getBoolean("auto_categorize", true)
+            _defaultTransactionType.value = prefs.getString("default_transaction_type", "EXPENSE") ?: "EXPENSE"
+            _hapticFeedback.value = prefs.getBoolean("haptic_feedback", true)
+            _displayName.value = prefs.getString("display_name", "") ?: ""
+            _avatarColorHex.value = prefs.getString("avatar_color_hex", "#6366F1") ?: "#6366F1"
+            _profilePictureUri.value = prefs.getString("profile_picture_uri", null)
+        } finally {
+            isRestoringFromCloud = false
         }
-        editor.apply()
-        
-        // Update all flows
-        _currency.value = prefs.getString("selected_currency", "USD") ?: "USD"
-        _currencySymbol.value = prefs.getString("selected_currency_symbol", "$") ?: "$"
-        _themeMode.value = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
-        _decimalPlaces.value = prefs.getInt("decimal_places", 2)
-        _weekStartDay.value = prefs.getString("week_start_day", "MONDAY") ?: "MONDAY"
-        _dateFormat.value = prefs.getString("date_format", "MMM dd, yyyy") ?: "MMM dd, yyyy"
-        _autoCategorize.value = prefs.getBoolean("auto_categorize", true)
-        _defaultTransactionType.value = prefs.getString("default_transaction_type", "EXPENSE") ?: "EXPENSE"
-        _hapticFeedback.value = prefs.getBoolean("haptic_feedback", true)
-        _displayName.value = prefs.getString("display_name", "") ?: ""
-        _avatarColorHex.value = prefs.getString("avatar_color_hex", "#0D9488") ?: "#0D9488"
-        _profilePictureUri.value = prefs.getString("profile_picture_uri", null)
     }
 
     fun getUserSettingsBackup(): UserSettingsBackup {

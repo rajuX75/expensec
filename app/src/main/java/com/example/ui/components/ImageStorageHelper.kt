@@ -54,18 +54,22 @@ object ImageStorageHelper {
             } catch (e: Exception) {
                 e.printStackTrace()
                 // Upload failed (e.g., offline). Queue the worker to upload it later when connected.
-                val uploadWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.data.cloud.FirebaseImageUploadWorker>()
-                    .setConstraints(
-                        androidx.work.Constraints.Builder()
-                            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                            .build()
+                try {
+                    val uploadWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.data.cloud.FirebaseImageUploadWorker>()
+                        .setConstraints(
+                            androidx.work.Constraints.Builder()
+                                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                                .build()
+                        )
+                        .build()
+                    androidx.work.WorkManager.getInstance(context).enqueueUniqueWork(
+                        "FirebaseImageUpload",
+                        androidx.work.ExistingWorkPolicy.APPEND_OR_REPLACE,
+                        uploadWorkRequest
                     )
-                    .build()
-                androidx.work.WorkManager.getInstance(context).enqueueUniqueWork(
-                    "FirebaseImageUpload",
-                    androidx.work.ExistingWorkPolicy.APPEND_OR_REPLACE,
-                    uploadWorkRequest
-                )
+                } catch (workEx: Exception) {
+                    android.util.Log.w("ImageStorageHelper", "Could not enqueue image upload worker: ${workEx.message}")
+                }
             }
         }
 
