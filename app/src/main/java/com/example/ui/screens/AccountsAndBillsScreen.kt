@@ -263,7 +263,7 @@ fun AccountsAndBillsScreen(
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
-                                        imageVector = Icons.Default.EventNote,
+                                        imageVector = Icons.AutoMirrored.Filled.EventNote,
                                         contentDescription = null,
                                         modifier = Modifier.size(54.dp),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)

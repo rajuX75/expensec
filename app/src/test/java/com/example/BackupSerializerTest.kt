@@ -10,7 +10,7 @@ import org.robolectric.annotation.Config
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [35])
 class BackupSerializerTest {
 
     private val sampleBackup = AppBackup(

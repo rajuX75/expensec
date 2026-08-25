@@ -79,7 +79,7 @@ fun AddBakiEntrySheet(
                     readOnly = true,
                     label = { Text("Product *") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showProductDropdown) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
                 
                 ExposedDropdownMenu(
@@ -96,7 +96,7 @@ fun AddBakiEntrySheet(
                             }
                         )
                     }
-                    Divider()
+                    HorizontalDivider()
                     DropdownMenuItem(
                         text = { Text("+ Add New Product", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) },
                         onClick = {

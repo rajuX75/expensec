@@ -153,7 +153,7 @@ fun ContactDetailScreen(
                             }
                             context.startActivity(intent)
                         }) {
-                            Icon(Icons.Default.Message, contentDescription = "SMS Reminder")
+                            Icon(Icons.AutoMirrored.Filled.Message, contentDescription = "SMS Reminder")
                         }
                     }
 
@@ -319,7 +319,7 @@ fun ContactDetailScreen(
                         modifier = Modifier.weight(1f).height(46.dp),
                         contentPadding = PaddingValues(horizontal = 6.dp)
                     ) {
-                        Icon(Icons.Default.CallReceived, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Filled.CallReceived, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Borrowed", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
@@ -371,7 +371,7 @@ fun ContactDetailScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                Icons.Outlined.ReceiptLong,
+                                Icons.AutoMirrored.Outlined.ReceiptLong,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -554,7 +554,7 @@ fun DhaarEntryCard(
                             Icon(
                                 imageVector = when {
                                     isGiven -> Icons.Default.ArrowOutward
-                                    isReceived -> Icons.Default.CallReceived
+                                    isReceived -> Icons.AutoMirrored.Filled.CallReceived
                                     else -> Icons.Default.Check
                                 },
                                 contentDescription = null,

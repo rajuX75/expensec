@@ -282,7 +282,7 @@ fun SettleUpDialog(
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
 
                         ExposedDropdownMenu(

@@ -431,8 +431,18 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 }
                 "THIS_WEEK" -> {
                     val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-                    txCal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
-                    txCal.get(Calendar.WEEK_OF_YEAR) == now.get(Calendar.WEEK_OF_YEAR)
+                    val calNow = Calendar.getInstance()
+                    
+                    val firstDay = when (weekStartDay.value) {
+                        "MONDAY" -> Calendar.MONDAY
+                        "SATURDAY" -> Calendar.SATURDAY
+                        else -> Calendar.SUNDAY
+                    }
+                    txCal.firstDayOfWeek = firstDay
+                    calNow.firstDayOfWeek = firstDay
+                    
+                    txCal.get(Calendar.YEAR) == calNow.get(Calendar.YEAR) &&
+                    txCal.get(Calendar.WEEK_OF_YEAR) == calNow.get(Calendar.WEEK_OF_YEAR)
                 }
                 "THIS_MONTH" -> {
                     val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }

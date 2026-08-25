@@ -230,7 +230,7 @@ fun LegalDocsDialog(
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(vertical = 10.dp)
                     ) {
-                        Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("View Online", fontSize = 12.sp)
                     }

@@ -229,7 +229,7 @@ fun AddEditDhaarDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.CallReceived,
+                            Icons.AutoMirrored.Filled.CallReceived,
                             contentDescription = null,
                             tint = if (entryType == "RECEIVED") Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
@@ -267,7 +267,7 @@ fun AddEditDhaarDialog(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
 
                     ExposedDropdownMenu(
@@ -456,7 +456,7 @@ fun AddEditDhaarDialog(
                 onValueChange = { note = it },
                 label = { Text("Note / Description") },
                 placeholder = { Text("e.g. Lunch share, emergency loan") },
-                leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -553,7 +553,7 @@ fun AddEditDhaarDialog(
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor()
+                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                             )
 
                             ExposedDropdownMenu(

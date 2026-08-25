@@ -82,7 +82,7 @@ fun ProfileScreen(
                 title = { Text("My Profile", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -255,7 +255,7 @@ fun ProfileScreen(
                             ProfileStatItem(
                                 label = "Transactions",
                                 value = allTransactions.size.toString(),
-                                icon = Icons.Default.ReceiptLong,
+                                icon = Icons.AutoMirrored.Filled.ReceiptLong,
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             VerticalDivider(modifier = Modifier.height(60.dp))
@@ -326,7 +326,7 @@ fun ProfileScreen(
                                         .background(Color(0xFF10B981).copy(alpha = 0.12f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.TrendingUp, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
+                                    Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
                                 }
                                 Spacer(Modifier.width(12.dp))
                                 Column {
@@ -355,7 +355,7 @@ fun ProfileScreen(
                                         .background(Color(0xFFEF4444).copy(alpha = 0.12f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.TrendingDown, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
+                                    Icon(Icons.AutoMirrored.Filled.TrendingDown, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
                                 }
                                 Spacer(Modifier.width(12.dp))
                                 Column {

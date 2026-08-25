@@ -239,7 +239,7 @@ fun FirebaseSyncCard(
                         .testTag("firebase_sign_in_button")
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Login,
+                        imageVector = Icons.AutoMirrored.Filled.Login,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )

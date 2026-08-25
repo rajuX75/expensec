@@ -153,7 +153,7 @@ fun PinLockScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Backspace,
+                                            imageVector = Icons.AutoMirrored.Filled.Backspace,
                                             contentDescription = "Backspace",
                                             tint = MaterialTheme.colorScheme.onBackground,
                                             modifier = Modifier.size(26.dp)

@@ -32,7 +32,7 @@ object CategoryIconHelper {
             "spa", "personal_care", "beauty", "fitness" -> Icons.Default.Spa
             "payments", "salary", "wage" -> Icons.Default.Payments
             "work", "freelance", "job" -> Icons.Default.Work
-            "trending_up", "investments", "stock", "crypto" -> Icons.Default.TrendingUp
+            "trending_up", "investments", "stock", "crypto" -> Icons.AutoMirrored.Filled.TrendingUp
             "redeem", "bonus", "gift", "gifts" -> Icons.Default.Redeem
             "apartment", "rental" -> Icons.Default.Apartment
             "account_balance_wallet", "wallet" -> Icons.Default.AccountBalanceWallet

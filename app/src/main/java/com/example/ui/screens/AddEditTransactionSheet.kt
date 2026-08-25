@@ -457,7 +457,7 @@ fun AddEditTransactionSheet(
                 onValueChange = { note = it },
                 label = { Text("Note / Description") },
                 placeholder = { Text("Add details or notes...") },
-                leadingIcon = { Icon(Icons.Default.Notes, contentDescription = null) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -469,7 +469,7 @@ fun AddEditTransactionSheet(
                 onValueChange = { tagsText = it },
                 label = { Text("Tags / Labels (comma-separated)") },
                 placeholder = { Text("e.g. Vacation, Work, TaxDeductible") },
-                leadingIcon = { Icon(Icons.Default.Label, contentDescription = null) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp)

@@ -188,7 +188,7 @@ fun MonthlyCategoryTrendsChart(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            Icons.Default.ShowChart,
+                            Icons.AutoMirrored.Filled.ShowChart,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                             modifier = Modifier.size(36.dp)

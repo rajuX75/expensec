@@ -1,16 +1,16 @@
 {
   "app_version": {
-    "versionCode": 3,
-    "versionName": "1.1.1",
+    "versionCode": 4,
+    "versionName": "1.1.2",
     "minSupportedVersionCode": 1,
-    "releaseTitle": "v1.1.1 — Automated Release",
+    "releaseTitle": "v1.1.2 — Automated Release & Smart Sync",
     "releaseNotes": "Automated release triggered from GitHub Actions.",
     "downloadUrl": "https://github.com/rajuX75/expensec/releases/latest/download/app-release.apk",
     "releaseDate": "2026-08-22",
     "apkSizeMb": 25.0,
     "isMandatory": false,
     "changes": [
-      "fix: Add contents write permission for GH Actions and bump version to 1.1.1"
+      "feat: Add dynamic release notes and auto-sync queue for failed image uploads"
     ]
   },
   "app_config": {
@@ -34,6 +34,17 @@
     }
   },
   "changelog": {
+    "v1_1_2": {
+      "versionCode": 4,
+      "versionName": "1.1.2",
+      "releaseDate": "August 2026",
+      "title": "Smart Image Sync",
+      "changes": [
+        "Cloud Storage integration for profile and receipt images",
+        "Background worker queue for offline image uploads",
+        "Dynamic GitHub release notes generation"
+      ]
+    },
     "v1_1_1": {
       "versionCode": 3,
       "versionName": "1.1.1",

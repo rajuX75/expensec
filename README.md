@@ -155,11 +155,13 @@ This repository includes a fully automated CI/CD pipeline using **GitHub Actions
 2. Draft a new release on GitHub using the version tag from `build.gradle.kts`.
 3. Upload the APK to the release.
 
-To enable production signing in the automated pipeline, add the following Repository Secrets to GitHub (**Settings > Secrets and variables > Actions > New repository secret**):
+To enable production signing and automatic in-app updates in the automated pipeline, add the following Repository Secrets to GitHub (**Settings > Secrets and variables > Actions > New repository secret**):
 - `KEYSTORE_BASE64`: The base64-encoded string of your release `.jks` file.
 - `STORE_PASSWORD`: Keystore password.
 - `KEY_ALIAS`: Key alias.
 - `KEY_PASSWORD`: Key password.
+- `FIREBASE_RTDB_URL`: The URL of your Firebase Realtime Database (e.g. `https://expenstracke-default-rtdb.firebaseio.com/`).
+- `FIREBASE_RTDB_SECRET`: Your Firebase Database Secret (from Project Settings > Service Accounts > Database Secrets).
 
 *(If these secrets are omitted, the action will safely fall back to debug signing).*
 

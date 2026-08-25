@@ -34,7 +34,7 @@ enum class AppScreen(
     val unselectedIcon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
     DASHBOARD("Home", Icons.Default.Dashboard, Icons.Outlined.Dashboard),
-    TRANSACTIONS("Transactions", Icons.Default.ReceiptLong, Icons.Outlined.ReceiptLong),
+    TRANSACTIONS("Transactions", Icons.AutoMirrored.Filled.ReceiptLong, Icons.AutoMirrored.Outlined.ReceiptLong),
     DHAAR("Debts & Loans", Icons.Default.Handshake, Icons.Outlined.Handshake),
     ANALYTICS("Analytics", Icons.Default.PieChart, Icons.Outlined.PieChart),
     BUDGETS("Budgets", Icons.Default.AccountBalanceWallet, Icons.Outlined.AccountBalanceWallet),
@@ -141,7 +141,7 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
                                 imageVector = when (currentScreen) {
                                     AppScreen.DHAAR -> Icons.Default.Handshake
                                     AppScreen.ANALYTICS -> Icons.Default.PieChart
-                                    AppScreen.TRANSACTIONS -> Icons.Default.ReceiptLong
+                                    AppScreen.TRANSACTIONS -> Icons.AutoMirrored.Filled.ReceiptLong
                                     AppScreen.BUDGETS -> Icons.Default.AccountBalanceWallet
                                     AppScreen.ACCOUNTS -> Icons.Default.AccountBalance
                                     else -> Icons.Default.Dashboard
@@ -168,7 +168,7 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
                         if (currentScreen == AppScreen.BUDGETS || currentScreen == AppScreen.ACCOUNTS) {
                             IconButton(onClick = { currentScreen = AppScreen.DASHBOARD }) {
                                 Icon(
-                                    imageVector = Icons.Default.ArrowBack,
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back to Home"
                                 )
                             }
