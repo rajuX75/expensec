@@ -20,6 +20,7 @@ import com.example.ui.viewmodel.ExpenseViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleAppUpgrade()
         enableEdgeToEdge()
         setContent {
             val viewModel: ExpenseViewModel = viewModel()
@@ -47,6 +48,51 @@ class MainActivity : ComponentActivity() {
                     ExpenseAppMain(viewModel = viewModel)
                 }
             }
+        }
+    }
+
+    /**
+     * BUG FIX #8: Detects an app version upgrade and performs safe housekeeping so
+     * stale state left behind by a previous version cannot crash the first launch:
+     *  - cancels the uniquely-named WorkManager jobs enqueued by the older version
+     *    (their serialized state may be incompatible with the new worker code),
+     *  - records the new versionCode.
+     * User data (Room database, preferences) is fully preserved — users no longer
+     * need to "clear data" after an update.
+     */
+    private fun handleAppUpgrade() {
+        try {
+            val prefs = getSharedPreferences("app_internal_state", MODE_PRIVATE)
+            val currentVersionCode = try {
+                packageManager.getPackageInfo(packageName, 0).longVersionCode.toInt()
+            } catch (e: Exception) {
+                -1
+            }
+            if (currentVersionCode == -1) return
+
+            val lastVersionCode = prefs.getInt("last_run_version_code", -1)
+            if (lastVersionCode == -1) {
+                // First run (fresh install, or first launch after this fix shipped).
+                prefs.edit().putInt("last_run_version_code", currentVersionCode).apply()
+                return
+            }
+
+            if (currentVersionCode != lastVersionCode) {
+                android.util.Log.i(
+                    "MainActivity",
+                    "App version changed: $lastVersionCode -> $currentVersionCode. Running upgrade housekeeping."
+                )
+                try {
+                    androidx.work.WorkManager.getInstance(this)
+                        .cancelUniqueWork("CloudinaryImageUpload")
+                } catch (e: Exception) {
+                    android.util.Log.w("MainActivity", "Could not cancel stale work: ${e.message}")
+                }
+                prefs.edit().putInt("last_run_version_code", currentVersionCode).apply()
+            }
+        } catch (e: Exception) {
+            // Upgrade housekeeping must never block or crash app startup.
+            android.util.Log.w("MainActivity", "Upgrade check failed", e)
         }
     }
 }

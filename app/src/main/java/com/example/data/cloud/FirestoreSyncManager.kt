@@ -25,7 +25,13 @@ class FirestoreSyncManager(
     private val database: AppDatabase,
     private val userPrefs: UserPreferencesRepository
 ) {
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    // BUG FIX #9: FirebaseFirestore.getInstance() throws when Firebase is not
+    // initialised (missing google-services.json, or right after an app update).
+    // Making it lazy means constructing this manager can no longer crash the
+    // ViewModel or the upload worker at startup; sync methods degrade gracefully.
+    private val firestore: FirebaseFirestore by lazy {
+        FirebaseFirestore.getInstance()
+    }
     private val tag = "FirestoreSyncManager"
 
     val transactionSyncer = FirestoreTransactionSyncer(firestore, database)
@@ -105,7 +111,9 @@ class FirestoreSyncManager(
                 }
             }
         }
-        userPrefs.registerPrefChangeListener(prefChangeListener!!)
+        // BUG FIX #9: the listener was just assigned above, but avoid the `!!`
+        // force-unwrap entirely so a race or refactor can never NPE here.
+        prefChangeListener?.let { userPrefs.registerPrefChangeListener(it) }
 
         // Listen for cloud changes (from other devices) and apply locally
         return docRef.addSnapshotListener { snapshot, error ->

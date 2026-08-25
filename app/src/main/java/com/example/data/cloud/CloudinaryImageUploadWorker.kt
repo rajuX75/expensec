@@ -33,13 +33,26 @@ class CloudinaryImageUploadWorker(
             return@withContext Result.success()
         }
 
-        val database = AppDatabase.getDatabase(
-            applicationContext,
-            kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
-        )
+        // BUG FIX #5: Room migrations can fail on version mismatch (getDatabase()
+        // throws) and FirebaseAuth may be unavailable right after an app update.
+        // Fail gracefully with a retry instead of crashing the worker with an NPE.
+        val database = try {
+            AppDatabase.getDatabase(
+                applicationContext,
+                kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Database unavailable in upload worker", e)
+            return@withContext if (runAttemptCount < 5) Result.retry() else Result.failure()
+        }
         val userPrefs = com.example.data.repository.UserPreferencesRepository(applicationContext)
         val firestoreSyncManager = FirestoreSyncManager(applicationContext, database, userPrefs)
-        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        val currentUserId = try {
+            com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        } catch (e: Exception) {
+            Log.w(TAG, "FirebaseAuth unavailable: ${e.message}")
+            null
+        }
 
         return@withContext try {
             uploadShopImages(database, firestoreSyncManager, currentUserId)

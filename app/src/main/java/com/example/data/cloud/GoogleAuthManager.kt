@@ -68,22 +68,47 @@ class GoogleAuthManager(
     }
 
     private val credentialManager = CredentialManager.create(context)
-    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
 
-    private val _currentUser = MutableStateFlow<FirebaseUser?>(firebaseAuth.currentUser)
+    // BUG FIX #7: FirebaseAuth.getInstance() throws when Firebase is not initialised
+    // (missing/invalid google-services.json, or right after an app update). Keep the
+    // reference nullable + lazy so constructing this manager can never crash the app,
+    // and every consumer degrades to a friendly error instead of an exception.
+    private val firebaseAuth: FirebaseAuth? by lazy {
+        try {
+            FirebaseAuth.getInstance()
+        } catch (e: Exception) {
+            Log.e(TAG, "FirebaseAuth is not available on this device", e)
+            null
+        }
+    }
+
+    private val _currentUser = MutableStateFlow<FirebaseUser?>(null)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
 
     init {
-        firebaseAuth.addAuthStateListener { auth ->
-            _currentUser.value = auth.currentUser
+        try {
+            _currentUser.value = firebaseAuth?.currentUser
+            firebaseAuth?.addAuthStateListener { auth ->
+                _currentUser.value = auth.currentUser
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to attach Firebase auth state listener", e)
         }
     }
 
     val currentUserId: String?
-        get() = firebaseAuth.currentUser?.uid
+        get() = try {
+            firebaseAuth?.currentUser?.uid
+        } catch (e: Exception) {
+            null
+        }
 
     val isAuthenticated: Boolean
-        get() = firebaseAuth.currentUser != null
+        get() = try {
+            firebaseAuth?.currentUser != null
+        } catch (e: Exception) {
+            false
+        }
 
     /**
      * Signs in with Google (ID token) into Firebase Auth.
@@ -103,6 +128,9 @@ class GoogleAuthManager(
         }
 
     private suspend fun signInWithFirebase(activityContext: Context, serverClientId: String): String {
+        // BUG FIX #7: surfaced as a readable Result.failure, never a raw crash.
+        val auth = firebaseAuth
+            ?: throw Exception("Firebase is not initialised on this device. Please update or reinstall the app.")
         var lastFailure: Throwable? = null
 
         // Pass 1: use an already-authorized account (silent). Pass 2: full account picker.
@@ -110,7 +138,7 @@ class GoogleAuthManager(
             try {
                 val idToken = requestGoogleIdToken(activityContext, serverClientId, filterAuthorized)
                 val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
-                val authResult = firebaseAuth.signInWithCredential(firebaseCredential).await()
+                val authResult = auth.signInWithCredential(firebaseCredential).await()
                 _currentUser.value = authResult.user
                 Log.d(TAG, "Firebase sign-in successful: ${authResult.user?.uid}")
 
@@ -219,7 +247,7 @@ class GoogleAuthManager(
             } catch (_: Exception) {
             }
             try {
-                firebaseAuth.signOut()
+                firebaseAuth?.signOut()
                 _currentUser.value = null
             } catch (_: Exception) {
             }

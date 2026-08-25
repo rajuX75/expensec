@@ -23,6 +23,10 @@ class FirebaseConfigManager(
     companion object {
         private const val TAG = "FirebaseConfigManager"
         private const val REST_DATABASE_FALLBACK_URL = "https://expenstracke-default-rtdb.firebaseio.com"
+
+        // BUG FIX #4: process-wide guard — persistence may only be enabled once per
+        // process, no matter how many manager instances are created.
+        private val persistenceAttempted = java.util.concurrent.atomic.AtomicBoolean(false)
     }
 
     private val httpClient = OkHttpClient.Builder()
@@ -48,20 +52,40 @@ class FirebaseConfigManager(
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     init {
-        try {
-            database = FirebaseDatabase.getInstance().apply {
-                // Keep synced for offline cache if available
+        database = try {
+            val instance = FirebaseDatabase.getInstance()
+            // BUG FIX #4: setPersistenceEnabled(true) throws IllegalStateException if
+            // called a second time in the same process (guaranteed on app updates).
+            // The AtomicBoolean makes the call happen exactly once per process, and
+            // any failure is logged but never leaves `database` in a broken state.
+            if (persistenceAttempted.compareAndSet(false, true)) {
                 try {
-                    setPersistenceEnabled(true)
-                } catch (_: Exception) {}
+                    instance.setPersistenceEnabled(true)
+                } catch (ise: IllegalStateException) {
+                    Log.w(TAG, "Firebase persistence already enabled: ${ise.message}")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not enable Firebase persistence", e)
+                }
             }
+            instance
+        } catch (e: Exception) {
+            Log.w(TAG, "Firebase Realtime Database init failed: ${e.message}. Using REST sync fallback.")
+            null
+        }
+
+        if (database != null) {
             versionRef = database?.getReference("app_version")
             configRef = database?.getReference("app_config")
             changelogRef = database?.getReference("changelog")
-
-            setupRealtimeListeners()
-        } catch (e: Exception) {
-            Log.w(TAG, "Firebase Realtime Database native initialization warning: ${e.message}. Using REST sync fallback.")
+            try {
+                setupRealtimeListeners()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to attach realtime listeners: ${e.message}. Using REST fallback.")
+                fetchViaRest()
+            }
+        } else {
+            // Native SDK unusable (e.g. google-services.json not injected) — the REST
+            // fallback still provides remote config / update info instead of crashing.
             fetchViaRest()
         }
     }

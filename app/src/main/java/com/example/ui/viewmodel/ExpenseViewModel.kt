@@ -52,18 +52,26 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val updateRepository = com.example.data.repository.UpdateRepository(application, userPrefs, firebaseConfigManager)
 
     init {
-        val uploadWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.data.cloud.CloudinaryImageUploadWorker>()
-            .setConstraints(
-                androidx.work.Constraints.Builder()
-                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                    .build()
+        // BUG FIX #1: Use REPLACE instead of KEEP so stale work enqueued by an older
+        // app version (possibly with an incompatible worker definition) is discarded
+        // instead of crashing, and guard the whole call so a WorkManager failure can
+        // never crash the app at startup.
+        try {
+            val uploadWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.data.cloud.CloudinaryImageUploadWorker>()
+                .setConstraints(
+                    androidx.work.Constraints.Builder()
+                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                        .build()
+                )
+                .build()
+            androidx.work.WorkManager.getInstance(application).enqueueUniqueWork(
+                "CloudinaryImageUpload",
+                androidx.work.ExistingWorkPolicy.REPLACE,
+                uploadWorkRequest
             )
-            .build()
-        androidx.work.WorkManager.getInstance(application).enqueueUniqueWork(
-            "CloudinaryImageUpload",
-            androidx.work.ExistingWorkPolicy.KEEP,
-            uploadWorkRequest
-        )
+        } catch (e: Exception) {
+            android.util.Log.e("ExpenseViewModel", "Failed to enqueue Cloudinary upload work", e)
+        }
     }
 
     // User Preferences
@@ -283,7 +291,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     init {
         loadSafetyBackups()
         viewModelScope.launch {
-            googleAuthManager.currentUser.collect { user ->
+            googleAuthManager.currentUser
+                // BUG FIX #2: react only when the signed-in user actually changes, so a
+                // late/duplicate Firebase auth-state emission cannot trigger repeated
+                // or overlapping Firestore syncs.
+                .distinctUntilChanged { old, new -> old?.uid == new?.uid }
+                .collect { user ->
                 if (user != null) {
                     val googleName = user.displayName?.trim()
                     val googleEmail = user.email?.trim()
@@ -310,14 +323,25 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                         userPrefs.setGoogleAccount(googleEmail)
                     }
 
-                    firestoreSyncManager.startRealtimeSync(user.uid, viewModelScope)
+                    // BUG FIX #2: both sync entry points are fully guarded — if
+                    // Firebase/Firestore is not ready yet the app stays stable and
+                    // sync simply retries on the next auth-state change.
+                    try {
+                        firestoreSyncManager.startRealtimeSync(user.uid, viewModelScope)
+                    } catch (e: Exception) {
+                        android.util.Log.e("ExpenseViewModel", "Realtime sync start failed: ${e.message}")
+                    }
                     try {
                         firestoreSyncManager.syncAll(user.uid)
                     } catch (e: Exception) {
                         android.util.Log.e("ExpenseViewModel", "Auto-sync on sign-in failed: ${e.message}")
                     }
                 } else {
-                    firestoreSyncManager.stopRealtimeSync()
+                    try {
+                        firestoreSyncManager.stopRealtimeSync()
+                    } catch (e: Exception) {
+                        android.util.Log.e("ExpenseViewModel", "Realtime sync stop failed: ${e.message}")
+                    }
                 }
             }
         }

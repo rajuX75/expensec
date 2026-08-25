@@ -12,23 +12,64 @@ import java.security.MessageDigest
 class UserPreferencesRepository(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("expense_user_prefs", Context.MODE_PRIVATE)
 
+    // BUG FIX #6: stale/corrupt preferences left by a previous app version can store
+    // a value under a key with a different type than this version expects (e.g. an Int
+    // where a String is now read). SharedPreferences then throws ClassCastException
+    // during property initialisation and the app crashes on launch — the "must clear
+    // data after update" symptom. These safe readers return (and re-write) the
+    // default instead, self-healing the corrupted entry.
+    private fun safeString(key: String, default: String): String = try {
+        prefs.getString(key, default) ?: default
+    } catch (e: Exception) {
+        try { prefs.edit().remove(key).apply() } catch (_: Exception) {}
+        default
+    }
+
+    private fun safeStringOrNull(key: String): String? = try {
+        prefs.getString(key, null)
+    } catch (e: Exception) {
+        try { prefs.edit().remove(key).apply() } catch (_: Exception) {}
+        null
+    }
+
+    private fun safeBoolean(key: String, default: Boolean): Boolean = try {
+        prefs.getBoolean(key, default)
+    } catch (e: Exception) {
+        try { prefs.edit().remove(key).apply() } catch (_: Exception) {}
+        default
+    }
+
+    private fun safeInt(key: String, default: Int): Int = try {
+        prefs.getInt(key, default)
+    } catch (e: Exception) {
+        try { prefs.edit().remove(key).apply() } catch (_: Exception) {}
+        default
+    }
+
+    private fun safeLong(key: String, default: Long): Long = try {
+        prefs.getLong(key, default)
+    } catch (e: Exception) {
+        try { prefs.edit().remove(key).apply() } catch (_: Exception) {}
+        default
+    }
+
     private val _currency = MutableStateFlow(
-        prefs.getString("selected_currency", "USD") ?: "USD"
+        safeString("selected_currency", "USD")
     )
     val currency: StateFlow<String> = _currency.asStateFlow()
 
     private val _currencySymbol = MutableStateFlow(
-        prefs.getString("selected_currency_symbol", "$") ?: "$"
+        safeString("selected_currency_symbol", "$")
     )
     val currencySymbol: StateFlow<String> = _currencySymbol.asStateFlow()
 
     private val _themeMode = MutableStateFlow(
-        prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM" // SYSTEM, LIGHT, DARK
+        safeString("theme_mode", "SYSTEM") // SYSTEM, LIGHT, DARK
     )
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
     private val _isPinLockEnabled = MutableStateFlow(
-        prefs.getBoolean("pin_lock_enabled", false)
+        safeBoolean("pin_lock_enabled", false)
     )
     val isPinLockEnabled: StateFlow<Boolean> = _isPinLockEnabled.asStateFlow()
 
@@ -42,147 +83,147 @@ class UserPreferencesRepository(context: Context) {
 
     // Cloud Backup Preferences
     private val _googleAccountEmail = MutableStateFlow<String?>(
-        prefs.getString("google_account_email", null)
+        safeStringOrNull("google_account_email")
     )
     val googleAccountEmail: StateFlow<String?> = _googleAccountEmail.asStateFlow()
 
     // Firebase Google ID token (used only for Firebase Auth hand-off)
     private val _googleAuthToken = MutableStateFlow<String?>(
-        prefs.getString("google_auth_token", null)
+        safeStringOrNull("google_auth_token")
     )
     val googleAuthToken: StateFlow<String?> = _googleAuthToken.asStateFlow()
 
     // Google Drive OAuth access token (the token that the Drive REST API actually accepts)
     private val _googleDriveAccessToken = MutableStateFlow<String?>(
-        prefs.getString("google_drive_access_token", null)
+        safeStringOrNull("google_drive_access_token")
     )
     val googleDriveAccessToken: StateFlow<String?> = _googleDriveAccessToken.asStateFlow()
 
     private val _lastCloudBackupTime = MutableStateFlow(
-        prefs.getLong("last_cloud_backup_time", 0L)
+        safeLong("last_cloud_backup_time", 0L)
     )
     val lastCloudBackupTime: StateFlow<Long> = _lastCloudBackupTime.asStateFlow()
 
     private val _lastCloudBackupStatus = MutableStateFlow(
-        prefs.getString("last_cloud_backup_status", "NEVER") ?: "NEVER" // SUCCESS, FAILED, NEVER
+        safeString("last_cloud_backup_status", "NEVER") // SUCCESS, FAILED, NEVER
     )
     val lastCloudBackupStatus: StateFlow<String> = _lastCloudBackupStatus.asStateFlow()
 
     private val _lastCloudBackupError = MutableStateFlow<String?>(
-        prefs.getString("last_cloud_backup_error", null)
+        safeStringOrNull("last_cloud_backup_error")
     )
     val lastCloudBackupError: StateFlow<String?> = _lastCloudBackupError.asStateFlow()
 
     private val _autoBackupFrequency = MutableStateFlow(
-        prefs.getString("auto_backup_frequency", "OFF") ?: "OFF" // OFF, DAILY, WEEKLY
+        safeString("auto_backup_frequency", "OFF") // OFF, DAILY, WEEKLY
     )
     val autoBackupFrequency: StateFlow<String> = _autoBackupFrequency.asStateFlow()
 
     private val _autoBackupWifiOnly = MutableStateFlow(
-        prefs.getBoolean("auto_backup_wifi_only", true)
+        safeBoolean("auto_backup_wifi_only", true)
     )
     val autoBackupWifiOnly: StateFlow<Boolean> = _autoBackupWifiOnly.asStateFlow()
 
     // Profile Preferences
     private val _displayName = MutableStateFlow(
-        prefs.getString("display_name", "") ?: ""
+        safeString("display_name", "")
     )
     val displayName: StateFlow<String> = _displayName.asStateFlow()
 
     private val _avatarColorHex = MutableStateFlow(
-        prefs.getString("avatar_color_hex", "#6366F1") ?: "#6366F1"
+        safeString("avatar_color_hex", "#6366F1")
     )
     val avatarColorHex: StateFlow<String> = _avatarColorHex.asStateFlow()
 
     private val _profilePictureUri = MutableStateFlow<String?>(
-        prefs.getString("profile_picture_uri", null)
+        safeStringOrNull("profile_picture_uri")
     )
     val profilePictureUri: StateFlow<String?> = _profilePictureUri.asStateFlow()
 
     // Cloudinary Preferences
     private val _cloudinaryCloudName = MutableStateFlow(
-        prefs.getString("cloudinary_cloud_name", "") ?: ""
+        safeString("cloudinary_cloud_name", "")
     )
     val cloudinaryCloudName: StateFlow<String> = _cloudinaryCloudName.asStateFlow()
 
     private val _cloudinaryApiKey = MutableStateFlow(
-        prefs.getString("cloudinary_api_key", "") ?: ""
+        safeString("cloudinary_api_key", "")
     )
     val cloudinaryApiKey: StateFlow<String> = _cloudinaryApiKey.asStateFlow()
 
     private val _cloudinaryApiSecret = MutableStateFlow(
-        prefs.getString("cloudinary_api_secret", "") ?: ""
+        safeString("cloudinary_api_secret", "")
     )
     val cloudinaryApiSecret: StateFlow<String> = _cloudinaryApiSecret.asStateFlow()
 
     private val _cloudinaryUploadPreset = MutableStateFlow(
-        prefs.getString("cloudinary_upload_preset", "") ?: ""
+        safeString("cloudinary_upload_preset", "")
     )
     val cloudinaryUploadPreset: StateFlow<String> = _cloudinaryUploadPreset.asStateFlow()
 
     // Notification Preferences
     private val _dueRemindersEnabled = MutableStateFlow(
-        prefs.getBoolean("due_reminders_enabled", true)
+        safeBoolean("due_reminders_enabled", true)
     )
     val dueRemindersEnabled: StateFlow<Boolean> = _dueRemindersEnabled.asStateFlow()
 
     private val _budgetAlertsEnabled = MutableStateFlow(
-        prefs.getBoolean("budget_alerts_enabled", true)
+        safeBoolean("budget_alerts_enabled", true)
     )
     val budgetAlertsEnabled: StateFlow<Boolean> = _budgetAlertsEnabled.asStateFlow()
 
     // Display & Format Preferences
     private val _decimalPlaces = MutableStateFlow(
-        prefs.getInt("decimal_places", 2)
+        safeInt("decimal_places", 2)
     )
     val decimalPlaces: StateFlow<Int> = _decimalPlaces.asStateFlow()
 
     private val _weekStartDay = MutableStateFlow(
-        prefs.getString("week_start_day", "MONDAY") ?: "MONDAY"
+        safeString("week_start_day", "MONDAY")
     )
     val weekStartDay: StateFlow<String> = _weekStartDay.asStateFlow()
 
     private val _dateFormat = MutableStateFlow(
-        prefs.getString("date_format", "MMM dd, yyyy") ?: "MMM dd, yyyy"
+        safeString("date_format", "MMM dd, yyyy")
     )
     val dateFormat: StateFlow<String> = _dateFormat.asStateFlow()
 
     // App Behavior Preferences
     private val _autoCategorize = MutableStateFlow(
-        prefs.getBoolean("auto_categorize", true)
+        safeBoolean("auto_categorize", true)
     )
     val autoCategorize: StateFlow<Boolean> = _autoCategorize.asStateFlow()
 
     private val _defaultTransactionType = MutableStateFlow(
-        prefs.getString("default_transaction_type", "EXPENSE") ?: "EXPENSE"
+        safeString("default_transaction_type", "EXPENSE")
     )
     val defaultTransactionType: StateFlow<String> = _defaultTransactionType.asStateFlow()
 
     private val _hapticFeedback = MutableStateFlow(
-        prefs.getBoolean("haptic_feedback", true)
+        safeBoolean("haptic_feedback", true)
     )
     val hapticFeedback: StateFlow<Boolean> = _hapticFeedback.asStateFlow()
 
     // Update Preferences
     private val _autoCheckUpdates = MutableStateFlow(
-        prefs.getBoolean("auto_check_updates", true)
+        safeBoolean("auto_check_updates", true)
     )
     val autoCheckUpdates: StateFlow<Boolean> = _autoCheckUpdates.asStateFlow()
 
     private val _skippedUpdateVersion = MutableStateFlow(
-        prefs.getInt("skipped_update_version", 0)
+        safeInt("skipped_update_version", 0)
     )
     val skippedUpdateVersion: StateFlow<Int> = _skippedUpdateVersion.asStateFlow()
 
     private val _lastUpdateCheckTime = MutableStateFlow(
-        prefs.getLong("last_update_check_time", 0L)
+        safeLong("last_update_check_time", 0L)
     )
     val lastUpdateCheckTime: StateFlow<Long> = _lastUpdateCheckTime.asStateFlow()
 
     private fun getOrMigratePinHash(): String {
-        val existingHash = prefs.getString("pin_code_hash", "") ?: ""
+        val existingHash = safeString("pin_code_hash", "")
         if (existingHash.isNotBlank()) return existingHash
-        val legacyPin = prefs.getString("pin_code", "") ?: ""
+        val legacyPin = safeString("pin_code", "")
         if (legacyPin.isNotBlank()) {
             val hash = hashPin(legacyPin)
             prefs.edit().putString("pin_code_hash", hash).remove("pin_code").apply()
@@ -414,22 +455,24 @@ class UserPreferencesRepository(context: Context) {
             editor.apply()
 
             // Update all StateFlows so the UI reacts immediately
-            _currency.value = prefs.getString("selected_currency", "USD") ?: "USD"
-            _currencySymbol.value = prefs.getString("selected_currency_symbol", "$") ?: "$"
-            _themeMode.value = prefs.getString("theme_mode", "SYSTEM") ?: "SYSTEM"
-            _decimalPlaces.value = prefs.getInt("decimal_places", 2)
-            _weekStartDay.value = prefs.getString("week_start_day", "MONDAY") ?: "MONDAY"
-            _dateFormat.value = prefs.getString("date_format", "MMM dd, yyyy") ?: "MMM dd, yyyy"
-            _autoCategorize.value = prefs.getBoolean("auto_categorize", true)
-            _defaultTransactionType.value = prefs.getString("default_transaction_type", "EXPENSE") ?: "EXPENSE"
-            _hapticFeedback.value = prefs.getBoolean("haptic_feedback", true)
-            _displayName.value = prefs.getString("display_name", "") ?: ""
-            _avatarColorHex.value = prefs.getString("avatar_color_hex", "#6366F1") ?: "#6366F1"
-            _profilePictureUri.value = prefs.getString("profile_picture_uri", null)
-            _cloudinaryCloudName.value = prefs.getString("cloudinary_cloud_name", "") ?: ""
-            _cloudinaryApiKey.value = prefs.getString("cloudinary_api_key", "") ?: ""
-            _cloudinaryApiSecret.value = prefs.getString("cloudinary_api_secret", "") ?: ""
-            _cloudinaryUploadPreset.value = prefs.getString("cloudinary_upload_preset", "") ?: ""
+            // BUG FIX #6: safe readers here too — a malformed cloud restore payload
+            // must refresh the StateFlows with defaults instead of crashing.
+            _currency.value = safeString("selected_currency", "USD")
+            _currencySymbol.value = safeString("selected_currency_symbol", "$")
+            _themeMode.value = safeString("theme_mode", "SYSTEM")
+            _decimalPlaces.value = safeInt("decimal_places", 2)
+            _weekStartDay.value = safeString("week_start_day", "MONDAY")
+            _dateFormat.value = safeString("date_format", "MMM dd, yyyy")
+            _autoCategorize.value = safeBoolean("auto_categorize", true)
+            _defaultTransactionType.value = safeString("default_transaction_type", "EXPENSE")
+            _hapticFeedback.value = safeBoolean("haptic_feedback", true)
+            _displayName.value = safeString("display_name", "")
+            _avatarColorHex.value = safeString("avatar_color_hex", "#6366F1")
+            _profilePictureUri.value = safeStringOrNull("profile_picture_uri")
+            _cloudinaryCloudName.value = safeString("cloudinary_cloud_name", "")
+            _cloudinaryApiKey.value = safeString("cloudinary_api_key", "")
+            _cloudinaryApiSecret.value = safeString("cloudinary_api_secret", "")
+            _cloudinaryUploadPreset.value = safeString("cloudinary_upload_preset", "")
         } finally {
             isRestoringFromCloud = false
         }

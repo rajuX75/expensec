@@ -178,22 +178,39 @@ object CloudinaryUploader {
                 .post(bodyBuilder.build())
                 .build()
 
+            // BUG FIX #3: every step after execute() (reading the body, parsing the
+            // JSON) is contained inside the use{} block, which guarantees the response
+            // — and its pooled connection — is closed even if parsing throws. No
+            // connection can leak out of this block, so the pool cannot be exhausted
+            // across repeated uploads.
             client.newCall(request).execute().use { response ->
-                val responseBody = response.body?.string()
+                val responseBody = try {
+                    response.body?.string()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to read Cloudinary response body", e)
+                    null
+                }
 
-                if (response.isSuccessful && responseBody != null) {
-                    val secureUrl = JSONObject(responseBody).optString("secure_url")
-                    if (secureUrl.isNotEmpty()) {
-                        Log.d(TAG, "Cloudinary upload success: $secureUrl")
-                        return@withContext secureUrl
-                    } else {
-                        Log.e(TAG, "No secure_url in Cloudinary response: $responseBody")
-                        return@withContext null
-                    }
-                } else {
+                if (!response.isSuccessful) {
                     Log.e(TAG, "Cloudinary upload failed [${response.code}]: $responseBody")
                     return@withContext null
                 }
+                if (responseBody.isNullOrBlank()) {
+                    Log.e(TAG, "Cloudinary upload returned an empty body")
+                    return@withContext null
+                }
+                val secureUrl = try {
+                    JSONObject(responseBody).optString("secure_url")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Malformed Cloudinary response JSON", e)
+                    ""
+                }
+                if (secureUrl.isNotEmpty()) {
+                    Log.d(TAG, "Cloudinary upload success: $secureUrl")
+                    return@withContext secureUrl
+                }
+                Log.e(TAG, "No secure_url in Cloudinary response: $responseBody")
+                return@withContext null
             }
         } catch (e: Exception) {
             Log.e(TAG, "Cloudinary upload error for $localUriString", e)
