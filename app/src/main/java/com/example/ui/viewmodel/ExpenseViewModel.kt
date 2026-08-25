@@ -52,7 +52,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val updateRepository = com.example.data.repository.UpdateRepository(application, userPrefs, firebaseConfigManager)
 
     init {
-        val uploadWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.data.cloud.FirebaseImageUploadWorker>()
+        val uploadWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.data.cloud.CloudinaryImageUploadWorker>()
             .setConstraints(
                 androidx.work.Constraints.Builder()
                     .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
@@ -60,7 +60,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             )
             .build()
         androidx.work.WorkManager.getInstance(application).enqueueUniqueWork(
-            "FirebaseImageUpload",
+            "CloudinaryImageUpload",
             androidx.work.ExistingWorkPolicy.KEEP,
             uploadWorkRequest
         )
