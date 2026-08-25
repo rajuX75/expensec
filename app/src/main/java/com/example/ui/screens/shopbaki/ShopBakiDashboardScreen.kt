@@ -245,7 +245,7 @@ fun ShopListItemCard(
                 Box {
                     if (!shop.profilePictureUri.isNullOrBlank()) {
                         coil.compose.AsyncImage(
-                            model = shop.profilePictureUri,
+                            model = com.example.data.cloud.CloudinaryUrl.thumb(shop.profilePictureUri),
                             contentDescription = "Profile Picture",
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                             modifier = Modifier

@@ -118,7 +118,7 @@ fun ProfileScreen(
                         Box(contentAlignment = Alignment.BottomEnd) {
                             if (!profilePictureUri.isNullOrBlank()) {
                                 coil.compose.AsyncImage(
-                                    model = profilePictureUri,
+                                    model = com.example.data.cloud.CloudinaryUrl.avatar(profilePictureUri),
                                     contentDescription = "Profile Picture",
                                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                                     modifier = Modifier

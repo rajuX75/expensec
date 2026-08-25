@@ -100,7 +100,7 @@ fun ReceiptAttachmentPicker(
                         contentAlignment = Alignment.Center
                     ) {
                         AsyncImage(
-                            model = receiptUri,
+                            model = com.example.data.cloud.CloudinaryUrl.thumb(receiptUri),
                             contentDescription = "Receipt Preview",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -164,7 +164,7 @@ fun ReceiptAttachmentPicker(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     AsyncImage(
-                        model = receiptUri,
+                        model = com.example.data.cloud.CloudinaryUrl.preview(receiptUri),
                         contentDescription = "Full Receipt",
                         modifier = Modifier
                             .fillMaxWidth()

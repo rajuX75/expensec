@@ -89,7 +89,7 @@ fun ContactDetailScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (!contact.photoUri.isNullOrBlank()) {
                             coil.compose.AsyncImage(
-                                model = contact.photoUri,
+                                model = com.example.data.cloud.CloudinaryUrl.avatar(contact.photoUri),
                                 contentDescription = contact.name,
                                 contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                                 modifier = Modifier
@@ -738,7 +738,7 @@ fun PhotoPreviewDialog(
         title = { Text("Receipt Photo") },
         text = {
             AsyncImage(
-                model = photoUri,
+                model = com.example.data.cloud.CloudinaryUrl.preview(photoUri),
                 contentDescription = "Receipt Attachment",
                 modifier = Modifier
                     .fillMaxWidth()

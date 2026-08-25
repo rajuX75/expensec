@@ -128,7 +128,7 @@ fun SettingsScreen(
                         Box(contentAlignment = Alignment.BottomEnd) {
                             if (!profilePictureUri.isNullOrBlank()) {
                                 AsyncImage(
-                                    model = profilePictureUri,
+                                    model = com.example.data.cloud.CloudinaryUrl.avatar(profilePictureUri),
                                     contentDescription = "Profile Avatar",
                                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                                     modifier = Modifier

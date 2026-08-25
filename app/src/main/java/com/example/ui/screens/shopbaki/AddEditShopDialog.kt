@@ -97,7 +97,7 @@ fun AddEditShopDialog(
                 ) {
                     if (!coverImageUri.isNullOrBlank()) {
                         AsyncImage(
-                            model = coverImageUri,
+                            model = com.example.data.cloud.CloudinaryUrl.preview(coverImageUri),
                             contentDescription = "Cover Image",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -118,7 +118,7 @@ fun AddEditShopDialog(
                     Box(contentAlignment = Alignment.BottomEnd) {
                         if (!profilePictureUri.isNullOrBlank()) {
                             AsyncImage(
-                                model = profilePictureUri,
+                                model = com.example.data.cloud.CloudinaryUrl.avatar(profilePictureUri),
                                 contentDescription = "Profile Picture",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier

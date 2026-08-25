@@ -131,7 +131,7 @@ fun AddEditContactDialog(
                 Box(contentAlignment = Alignment.BottomEnd) {
                     if (!photoUri.isNullOrBlank()) {
                         AsyncImage(
-                            model = photoUri,
+                            model = com.example.data.cloud.CloudinaryUrl.avatar(photoUri),
                             contentDescription = "Contact Photo",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier

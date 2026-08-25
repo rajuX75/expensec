@@ -113,7 +113,7 @@ fun ShopDetailScreen(
             ) {
                 if (!shop?.coverImageUri.isNullOrBlank()) {
                     coil.compose.AsyncImage(
-                        model = shop?.coverImageUri,
+                        model = com.example.data.cloud.CloudinaryUrl.preview(shop?.coverImageUri),
                         contentDescription = "Cover Image",
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                         modifier = Modifier
@@ -137,7 +137,7 @@ fun ShopDetailScreen(
                 ) {
                     if (!shop?.profilePictureUri.isNullOrBlank()) {
                         coil.compose.AsyncImage(
-                            model = shop?.profilePictureUri,
+                            model = com.example.data.cloud.CloudinaryUrl.avatar(shop?.profilePictureUri),
                             contentDescription = "Profile Picture",
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                             modifier = Modifier

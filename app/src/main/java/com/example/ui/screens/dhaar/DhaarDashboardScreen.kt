@@ -434,7 +434,7 @@ fun ContactListItemCard(
             ) {
                 if (!contact.photoUri.isNullOrBlank()) {
                     coil.compose.AsyncImage(
-                        model = contact.photoUri,
+                        model = com.example.data.cloud.CloudinaryUrl.thumb(contact.photoUri),
                         contentDescription = contact.name,
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                         modifier = Modifier

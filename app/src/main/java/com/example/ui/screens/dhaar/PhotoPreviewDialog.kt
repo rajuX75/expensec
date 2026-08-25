@@ -53,7 +53,7 @@ fun PhotoPreviewDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 AsyncImage(
-                    model = Uri.parse(photoUri),
+                    model = com.example.data.cloud.CloudinaryUrl.preview(photoUri)?.let { Uri.parse(it) },
                     contentDescription = "Attached Document/Note",
                     modifier = Modifier
                         .fillMaxWidth()
