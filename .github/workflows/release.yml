@@ -30,26 +30,40 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ── Fix #1: Auto-increment versionCode → tag is always unique ──────────
-      - name: Auto-increment versionCode
+      # ── Fix #1: Auto-increment versionCode & versionName ──────────
+      - name: Auto-increment versionCode & versionName
         run: |
-          CURRENT=$(grep "versionCode =" app/build.gradle.kts | awk '{print $3}')
-          NEW=$((CURRENT + 1))
-          sed -i "s/versionCode = $CURRENT/versionCode = $NEW/" app/build.gradle.kts
-          echo "NEW_VERSION_CODE=$NEW" >> $GITHUB_ENV
-          echo "Bumped versionCode: $CURRENT → $NEW"
+          # Bump versionCode
+          CURRENT_VC=$(grep "versionCode =" app/build.gradle.kts | awk '{print $3}')
+          NEW_VC=$((CURRENT_VC + 1))
+          sed -i "s/versionCode = $CURRENT_VC/versionCode = $NEW_VC/" app/build.gradle.kts
+          
+          # Bump versionName (assuming format X.Y.Z)
+          CURRENT_VN=$(grep "versionName =" app/build.gradle.kts | awk -F '"' '{print $2}')
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VN"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VN="$MAJOR.$MINOR.$NEW_PATCH"
+          sed -i "s/versionName = \"$CURRENT_VN\"/versionName = \"$NEW_VN\"/" app/build.gradle.kts
+          
+          echo "NEW_VERSION_CODE=$NEW_VC" >> $GITHUB_ENV
+          echo "NEW_VERSION_NAME=$NEW_VN" >> $GITHUB_ENV
+          echo "Bumped version: $CURRENT_VN ($CURRENT_VC) → $NEW_VN ($NEW_VC)"
 
-      - name: Commit & push bumped versionCode
+      - name: Commit & push bumped version
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add app/build.gradle.kts
           # [skip ci] tells GitHub Actions NOT to re-trigger this workflow on the bump commit
-          git commit -m "ci: bump versionCode to ${{ env.NEW_VERSION_CODE }} [skip ci]"
+          git commit -m "ci: bump version to ${{ env.NEW_VERSION_NAME }} (${{ env.NEW_VERSION_CODE }}) [skip ci]"
           git push
 
       # ── Fix #3: Run tests before building — broken commits never ship ───────
       - name: Run Unit Tests
+        env:
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         run: ./gradlew test
 
       - name: Decode Keystore
@@ -68,6 +82,9 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         run: ./gradlew assembleRelease
 
       # ── Fix #2: Measure the real APK size ──────────────────────────────────
@@ -85,8 +102,8 @@ jobs:
           VERSION_NAME=$(grep "versionName =" app/build.gradle.kts | awk -F '"' '{print $2}')
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
 
-          # Tag = v<versionCode> — always unique because we bumped it above
-          echo "RELEASE_TAG=v${{ env.NEW_VERSION_CODE }}" >> $GITHUB_ENV
+          # Tag = v<versionName> — professional tagging format (e.g. v1.1.4)
+          echo "RELEASE_TAG=v${{ env.NEW_VERSION_NAME }}" >> $GITHUB_ENV
 
           # Get the latest commit message for the release notes
           COMMIT_MSG=$(git log -1 --pretty=%B)
