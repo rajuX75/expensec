@@ -4,7 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import androidx.exifinterface.media.ExifInterface
+import android.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -63,8 +63,8 @@ object ImageStorageHelper {
         }
 
         // Attempt to upload to Cloudinary for permanent cross-device syncing
-        if (localUri != null && localUri!!.startsWith("file://")) {
-            val cloudUrl = com.example.data.cloud.CloudinaryUploader.upload(localUri!!, folderName)
+        if (localUri.startsWith("file://")) {
+            val cloudUrl = com.example.data.cloud.CloudinaryUploader.upload(localUri, folderName)
             if (cloudUrl != null) {
                 return@withContext cloudUrl
             } else {
