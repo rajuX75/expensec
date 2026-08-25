@@ -59,10 +59,19 @@ jobs:
           git push
       - name: Generate .env file from secrets
         run: |
-          echo "CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}" >> .env
-          echo "CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}" >> .env
-          echo "CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}" >> .env
-          echo "GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}" >> .env
+          cp .env.example .env
+          if [ -n "${{ secrets.CLOUDINARY_CLOUD_NAME }}" ]; then
+            sed -i "s|^CLOUDINARY_CLOUD_NAME=.*|CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}|" .env
+          fi
+          if [ -n "${{ secrets.CLOUDINARY_API_KEY }}" ]; then
+            sed -i "s|^CLOUDINARY_API_KEY=.*|CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}|" .env
+          fi
+          if [ -n "${{ secrets.CLOUDINARY_API_SECRET }}" ]; then
+            sed -i "s|^CLOUDINARY_API_SECRET=.*|CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}|" .env
+          fi
+          if [ -n "${{ secrets.GOOGLE_WEB_CLIENT_ID }}" ]; then
+            sed -i "s|^GOOGLE_WEB_CLIENT_ID=.*|GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}|" .env
+          fi
 
       # ── Fix #3: Run tests before building — broken commits never ship ───────
       - name: Run Unit Tests
