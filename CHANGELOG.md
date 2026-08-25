@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.6] — 2026-08-25
+
+Direct Cloudinary upload flow, realtime Firebase sync, and configurable in-app credentials.
+
+### Fixed
+- **Direct Upload Flow**: Images selected by the user are now immediately compressed, uploaded to Cloudinary, returned as HTTPS URLs, and synced directly to Firebase DB and Room DB.
+- **Progress Indicators**: Added upload spinners across avatar pickers, shop covers, dhaar receipts, and transaction receipts while Cloudinary uploads are in-flight.
+- **Worker Firebase Sync**: Background upload worker now pushes updated entities to Firebase Firestore immediately upon successful upload.
+- **CI Secrets Injection**: Added `.env` generation step in GitHub Actions release workflow so Cloudinary credentials are fully injected into the release APK.
+- **In-App Cloudinary Settings**: Added a Cloudinary configuration card and dialog in Settings with connection testing support and runtime preferences.
+
 ## [1.1.5] — 2026-08-25
 
 Patch release focused on fixing Cloudinary image upload & delivery.

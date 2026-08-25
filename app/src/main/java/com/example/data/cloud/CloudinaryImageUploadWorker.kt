@@ -25,14 +25,10 @@ class CloudinaryImageUploadWorker(
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        // Fail fast with a clear log instead of silently "succeeding" while
-        // nothing was ever uploaded to the cloud.
-        if (!CloudinaryUploader.isConfigured()) {
-            Log.e(
+        if (!CloudinaryUploader.isConfigured(applicationContext)) {
+            Log.w(
                 TAG,
-                "Cloudinary credentials are placeholders — skipping upload sync. " +
-                        "Set real CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / " +
-                        "CLOUDINARY_API_SECRET in .env and rebuild."
+                "Cloudinary credentials are not configured — skipping background upload."
             )
             return@withContext Result.success()
         }
@@ -41,12 +37,15 @@ class CloudinaryImageUploadWorker(
             applicationContext,
             kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
         )
+        val userPrefs = com.example.data.repository.UserPreferencesRepository(applicationContext)
+        val firestoreSyncManager = FirestoreSyncManager(applicationContext, database, userPrefs)
+        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
 
         return@withContext try {
-            uploadShopImages(database)
-            uploadContactImages(database)
-            uploadDhaarImages(database)
-            uploadTransactionImages(database)
+            uploadShopImages(database, firestoreSyncManager, currentUserId)
+            uploadContactImages(database, firestoreSyncManager, currentUserId)
+            uploadDhaarImages(database, firestoreSyncManager, currentUserId)
+            uploadTransactionImages(database, firestoreSyncManager, currentUserId)
 
             Log.d(TAG, "Image upload sync completed.")
             Result.success()
@@ -69,7 +68,11 @@ class CloudinaryImageUploadWorker(
         }
     }
 
-    private suspend fun uploadShopImages(db: AppDatabase) {
+    private suspend fun uploadShopImages(
+        db: AppDatabase,
+        firestoreSyncManager: FirestoreSyncManager,
+        userId: String?
+    ) {
         val shopDao = db.shopDao()
         val shops = shopDao.getAllShopsSync()
         for (shop in shops) {
@@ -78,7 +81,7 @@ class CloudinaryImageUploadWorker(
 
             val profileLocal = shop.profilePictureUri
             if (profileLocal?.startsWith("file://") == true) {
-                val remoteUrl = CloudinaryUploader.upload(profileLocal, "shops")
+                val remoteUrl = CloudinaryUploader.upload(applicationContext, profileLocal, "shops")
                 if (remoteUrl != null) {
                     newShop = newShop.copy(profilePictureUri = remoteUrl)
                     updated = true
@@ -87,7 +90,7 @@ class CloudinaryImageUploadWorker(
             }
             val coverLocal = newShop.coverImageUri
             if (coverLocal?.startsWith("file://") == true) {
-                val remoteUrl = CloudinaryUploader.upload(coverLocal, "shops")
+                val remoteUrl = CloudinaryUploader.upload(applicationContext, coverLocal, "shops")
                 if (remoteUrl != null) {
                     newShop = newShop.copy(coverImageUri = remoteUrl)
                     updated = true
@@ -97,49 +100,78 @@ class CloudinaryImageUploadWorker(
 
             if (updated) {
                 shopDao.insertShop(newShop)
+                if (!userId.isNullOrBlank()) {
+                    runCatching { firestoreSyncManager.pushShop(userId, newShop) }
+                }
             }
         }
     }
 
-    private suspend fun uploadContactImages(db: AppDatabase) {
+    private suspend fun uploadContactImages(
+        db: AppDatabase,
+        firestoreSyncManager: FirestoreSyncManager,
+        userId: String?
+    ) {
         val contactDao = db.contactDao()
         val contacts = contactDao.getAllContactsSync()
         for (contact in contacts) {
             val local = contact.photoUri
             if (local?.startsWith("file://") == true) {
-                val remoteUrl = CloudinaryUploader.upload(local, "contacts")
+                val remoteUrl = CloudinaryUploader.upload(applicationContext, local, "contacts")
                 if (remoteUrl != null) {
-                    contactDao.insertContact(contact.copy(photoUri = remoteUrl))
+                    val updatedContact = contact.copy(photoUri = remoteUrl)
+                    contactDao.insertContact(updatedContact)
+                    if (!userId.isNullOrBlank()) {
+                        runCatching { firestoreSyncManager.pushContact(userId, updatedContact) }
+                    }
                     cleanupLocalFile(local)
                 }
             }
         }
     }
 
-    private suspend fun uploadDhaarImages(db: AppDatabase) {
+    private suspend fun uploadDhaarImages(
+        db: AppDatabase,
+        firestoreSyncManager: FirestoreSyncManager,
+        userId: String?
+    ) {
         val dhaarDao = db.dhaarEntryDao()
         val entries = dhaarDao.getAllEntriesSync()
         for (entry in entries) {
             val local = entry.tagPhotoUri
             if (local?.startsWith("file://") == true) {
-                val remoteUrl = CloudinaryUploader.upload(local, "dhaar")
+                val remoteUrl = CloudinaryUploader.upload(applicationContext, local, "dhaar")
                 if (remoteUrl != null) {
-                    dhaarDao.insertEntry(entry.copy(tagPhotoUri = remoteUrl))
+                    val updatedEntry = entry.copy(tagPhotoUri = remoteUrl)
+                    dhaarDao.insertEntry(updatedEntry)
+                    if (!userId.isNullOrBlank()) {
+                        val contact = db.contactDao().getContactByIdSync(entry.contactId)
+                        val contactUuid = contact?.uuid ?: ""
+                        runCatching { firestoreSyncManager.pushDhaarEntry(userId, updatedEntry, contactUuid) }
+                    }
                     cleanupLocalFile(local)
                 }
             }
         }
     }
 
-    private suspend fun uploadTransactionImages(db: AppDatabase) {
+    private suspend fun uploadTransactionImages(
+        db: AppDatabase,
+        firestoreSyncManager: FirestoreSyncManager,
+        userId: String?
+    ) {
         val txDao = db.transactionDao()
         val txs = txDao.getAllTransactionsSync()
         for (tx in txs) {
             val local = tx.receiptUri
             if (local?.startsWith("file://") == true) {
-                val remoteUrl = CloudinaryUploader.upload(local, "receipts")
+                val remoteUrl = CloudinaryUploader.upload(applicationContext, local, "receipts")
                 if (remoteUrl != null) {
-                    txDao.insertTransaction(tx.copy(receiptUri = remoteUrl))
+                    val updatedTx = tx.copy(receiptUri = remoteUrl)
+                    txDao.insertTransaction(updatedTx)
+                    if (!userId.isNullOrBlank()) {
+                        runCatching { firestoreSyncManager.pushTransaction(userId, updatedTx) }
+                    }
                     cleanupLocalFile(local)
                 }
             }

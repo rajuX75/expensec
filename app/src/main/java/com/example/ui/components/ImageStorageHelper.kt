@@ -64,7 +64,7 @@ object ImageStorageHelper {
 
         // Attempt to upload to Cloudinary for permanent cross-device syncing
         if (localUri.startsWith("file://")) {
-            val cloudUrl = com.example.data.cloud.CloudinaryUploader.upload(localUri, folderName)
+            val cloudUrl = com.example.data.cloud.CloudinaryUploader.upload(context, localUri, folderName)
             if (cloudUrl != null) {
                 return@withContext cloudUrl
             } else {

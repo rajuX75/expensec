@@ -55,14 +55,19 @@ fun ProfileScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
 
+    var isUploadingPhoto by remember { mutableStateOf(false) }
+
     // Image Picker Launcher for Profile Picture
     val photoPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
     ) { uri: android.net.Uri? ->
         uri?.let {
+            isUploadingPhoto = true
+            viewModel.setProfilePictureUri(it.toString())
             scope.launch {
                 val persistentUri = com.example.ui.components.ImageStorageHelper.saveImageLocally(context, it, "profile")
                 viewModel.setProfilePictureUri(persistentUri ?: it.toString())
+                isUploadingPhoto = false
             }
         }
     }
@@ -140,6 +145,22 @@ fun ProfileScreen(
                                         fontSize = 42.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
+                                    )
+                                }
+                            }
+
+                            if (isUploadingPhoto) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.Black.copy(alpha = 0.4f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(32.dp),
+                                        color = Color.White,
+                                        strokeWidth = 3.dp
                                     )
                                 }
                             }

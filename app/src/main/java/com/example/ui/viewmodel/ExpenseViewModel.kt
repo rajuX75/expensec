@@ -79,6 +79,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val avatarColorHex = userPrefs.avatarColorHex
     val profilePictureUri = userPrefs.profilePictureUri
 
+    // Cloudinary Preferences
+    val cloudinaryCloudName = userPrefs.cloudinaryCloudName
+    val cloudinaryApiKey = userPrefs.cloudinaryApiKey
+    val cloudinaryApiSecret = userPrefs.cloudinaryApiSecret
+    val cloudinaryUploadPreset = userPrefs.cloudinaryUploadPreset
+
     // Notification Preferences
     val dueRemindersEnabled = userPrefs.dueRemindersEnabled
     val budgetAlertsEnabled = userPrefs.budgetAlertsEnabled
@@ -706,6 +712,19 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     fun setProfilePictureUri(uri: String?) {
         userPrefs.setProfilePictureUri(uri)
+    }
+
+    fun setCloudinaryConfig(
+        cloudName: String,
+        apiKey: String,
+        apiSecret: String,
+        uploadPreset: String
+    ) {
+        userPrefs.setCloudinaryConfig(cloudName, apiKey, apiSecret, uploadPreset)
+    }
+
+    suspend fun testCloudinaryConnection(): Result<String> {
+        return com.example.data.cloud.CloudinaryUploader.testConnection(getApplication<Application>())
     }
 
     fun setDueRemindersEnabled(enabled: Boolean) {

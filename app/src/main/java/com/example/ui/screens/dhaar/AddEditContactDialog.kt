@@ -43,6 +43,7 @@ fun AddEditContactDialog(
     var name by remember { mutableStateOf(contactToEdit?.name ?: "") }
     var phoneNumber by remember { mutableStateOf(contactToEdit?.phoneNumber ?: "") }
     var photoUri by remember { mutableStateOf(contactToEdit?.photoUri) }
+    var isUploadingPhoto by remember { mutableStateOf(false) }
     var nameError by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
@@ -52,9 +53,12 @@ fun AddEditContactDialog(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
+            isUploadingPhoto = true
+            photoUri = it.toString()
             scope.launch {
                 val persistentUri = com.example.ui.components.ImageStorageHelper.saveImageLocally(context, it, "contacts")
                 photoUri = persistentUri ?: it.toString()
+                isUploadingPhoto = false
             }
         }
     }
@@ -153,6 +157,22 @@ fun AddEditContactDialog(
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    if (isUploadingPhoto) {
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.4f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                color = Color.White,
+                                strokeWidth = 2.5.dp
                             )
                         }
                     }

@@ -99,6 +99,27 @@ class UserPreferencesRepository(context: Context) {
     )
     val profilePictureUri: StateFlow<String?> = _profilePictureUri.asStateFlow()
 
+    // Cloudinary Preferences
+    private val _cloudinaryCloudName = MutableStateFlow(
+        prefs.getString("cloudinary_cloud_name", "") ?: ""
+    )
+    val cloudinaryCloudName: StateFlow<String> = _cloudinaryCloudName.asStateFlow()
+
+    private val _cloudinaryApiKey = MutableStateFlow(
+        prefs.getString("cloudinary_api_key", "") ?: ""
+    )
+    val cloudinaryApiKey: StateFlow<String> = _cloudinaryApiKey.asStateFlow()
+
+    private val _cloudinaryApiSecret = MutableStateFlow(
+        prefs.getString("cloudinary_api_secret", "") ?: ""
+    )
+    val cloudinaryApiSecret: StateFlow<String> = _cloudinaryApiSecret.asStateFlow()
+
+    private val _cloudinaryUploadPreset = MutableStateFlow(
+        prefs.getString("cloudinary_upload_preset", "") ?: ""
+    )
+    val cloudinaryUploadPreset: StateFlow<String> = _cloudinaryUploadPreset.asStateFlow()
+
     // Notification Preferences
     private val _dueRemindersEnabled = MutableStateFlow(
         prefs.getBoolean("due_reminders_enabled", true)
@@ -297,6 +318,25 @@ class UserPreferencesRepository(context: Context) {
         _dateFormat.value = format
     }
 
+    // --- Cloudinary Configuration setter ---
+    fun setCloudinaryConfig(
+        cloudName: String,
+        apiKey: String,
+        apiSecret: String,
+        uploadPreset: String
+    ) {
+        prefs.edit()
+            .putString("cloudinary_cloud_name", cloudName.trim())
+            .putString("cloudinary_api_key", apiKey.trim())
+            .putString("cloudinary_api_secret", apiSecret.trim())
+            .putString("cloudinary_upload_preset", uploadPreset.trim())
+            .apply()
+        _cloudinaryCloudName.value = cloudName.trim()
+        _cloudinaryApiKey.value = apiKey.trim()
+        _cloudinaryApiSecret.value = apiSecret.trim()
+        _cloudinaryUploadPreset.value = uploadPreset.trim()
+    }
+
     // --- App Behavior setters ---
     fun setAutoCategorize(enabled: Boolean) {
         prefs.edit().putBoolean("auto_categorize", enabled).apply()
@@ -386,6 +426,10 @@ class UserPreferencesRepository(context: Context) {
             _displayName.value = prefs.getString("display_name", "") ?: ""
             _avatarColorHex.value = prefs.getString("avatar_color_hex", "#6366F1") ?: "#6366F1"
             _profilePictureUri.value = prefs.getString("profile_picture_uri", null)
+            _cloudinaryCloudName.value = prefs.getString("cloudinary_cloud_name", "") ?: ""
+            _cloudinaryApiKey.value = prefs.getString("cloudinary_api_key", "") ?: ""
+            _cloudinaryApiSecret.value = prefs.getString("cloudinary_api_secret", "") ?: ""
+            _cloudinaryUploadPreset.value = prefs.getString("cloudinary_upload_preset", "") ?: ""
         } finally {
             isRestoringFromCloud = false
         }

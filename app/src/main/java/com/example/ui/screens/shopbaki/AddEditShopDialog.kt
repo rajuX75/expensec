@@ -54,23 +54,31 @@ fun AddEditShopDialog(
     
     var profilePictureUri by remember { mutableStateOf(shop?.profilePictureUri) }
     var coverImageUri by remember { mutableStateOf(shop?.coverImageUri) }
+    var isUploadingProfile by remember { mutableStateOf(false) }
+    var isUploadingCover by remember { mutableStateOf(false) }
 
     var isNameError by remember { mutableStateOf(false) }
 
     val profilePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
+            isUploadingProfile = true
+            profilePictureUri = it.toString()
             scope.launch {
                 val saved = ImageStorageHelper.saveImageLocally(context, it, "shops")
                 profilePictureUri = saved ?: it.toString()
+                isUploadingProfile = false
             }
         }
     }
 
     val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
+            isUploadingCover = true
+            coverImageUri = it.toString()
             scope.launch {
                 val saved = ImageStorageHelper.saveImageLocally(context, it, "shops")
                 coverImageUri = saved ?: it.toString()
+                isUploadingCover = false
             }
         }
     }
@@ -108,6 +116,21 @@ fun AddEditShopDialog(
                             Text("Add Cover Image", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
+
+                    if (isUploadingCover) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.4f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                color = Color.White,
+                                strokeWidth = 3.dp
+                            )
+                        }
+                    }
                 }
 
                 // Profile Image
@@ -135,14 +158,31 @@ fun AddEditShopDialog(
                                     .clickable { profilePicker.launch("image/*") },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = if (name.isNotBlank()) name.take(1).uppercase() else "?",
-                                    fontSize = 32.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                Icon(
+                                    Icons.Default.Storefront,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(40.dp)
                                 )
                             }
                         }
+
+                        if (isUploadingProfile) {
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.4f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(28.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.5.dp
+                                )
+                            }
+                        }
+
                         Box(
                             modifier = Modifier
                                 .size(28.dp)

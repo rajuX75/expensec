@@ -32,14 +32,18 @@ fun ReceiptAttachmentPicker(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showFullImageDialog by remember { mutableStateOf(false) }
+    var isUploading by remember { mutableStateOf(false) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
+            isUploading = true
+            onReceiptChanged(uri.toString())
             scope.launch {
                 val persistentUri = ImageStorageHelper.saveImageLocally(context, uri, "receipts")
                 onReceiptChanged(persistentUri ?: uri.toString())
+                isUploading = false
             }
         }
     }
@@ -105,18 +109,32 @@ fun ReceiptAttachmentPicker(
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
+                        if (isUploading) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.4f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.5.dp
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Receipt attached",
+                            text = if (isUploading) "Uploading receipt..." else "Receipt attached",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Tap to view full receipt",
+                            text = if (isUploading) "Saving to Cloudinary..." else "Tap to view full receipt",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable { showFullImageDialog = true }

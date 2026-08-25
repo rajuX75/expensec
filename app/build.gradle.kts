@@ -20,6 +20,13 @@ android {
     versionCode = 13
     versionName = "1.1.7"
 
+    val envCloudName = System.getenv("CLOUDINARY_CLOUD_NAME") ?: ""
+    val envApiKey = System.getenv("CLOUDINARY_API_KEY") ?: ""
+    val envApiSecret = System.getenv("CLOUDINARY_API_SECRET") ?: ""
+    buildConfigField("String", "ENV_CLOUDINARY_CLOUD_NAME", "\"$envCloudName\"")
+    buildConfigField("String", "ENV_CLOUDINARY_API_KEY", "\"$envApiKey\"")
+    buildConfigField("String", "ENV_CLOUDINARY_API_SECRET", "\"$envApiSecret\"")
+
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 

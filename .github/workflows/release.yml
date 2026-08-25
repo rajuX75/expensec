@@ -57,6 +57,12 @@ jobs:
           # [skip ci] tells GitHub Actions NOT to re-trigger this workflow on the bump commit
           git commit -m "ci: bump version to ${{ env.NEW_VERSION_NAME }} (${{ env.NEW_VERSION_CODE }}) [skip ci]"
           git push
+      - name: Generate .env file from secrets
+        run: |
+          echo "CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}" >> .env
+          echo "CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}" >> .env
+          echo "CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}" >> .env
+          echo "GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}" >> .env
 
       # ── Fix #3: Run tests before building — broken commits never ship ───────
       - name: Run Unit Tests

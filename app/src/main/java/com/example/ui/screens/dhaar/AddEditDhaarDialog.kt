@@ -86,6 +86,7 @@ fun AddEditDhaarDialog(
 
     val dateFormat = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
 
+    var isUploadingPhoto by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // System Image Picker launcher
@@ -93,9 +94,12 @@ fun AddEditDhaarDialog(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
+            isUploadingPhoto = true
+            photoUriString = it.toString()
             scope.launch {
                 val saved = com.example.ui.components.ImageStorageHelper.saveImageLocally(context, it, "receipts")
                 photoUriString = saved ?: it.toString()
+                isUploadingPhoto = false
             }
         }
     }
@@ -481,10 +485,16 @@ fun AddEditDhaarDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = if (photoUriString != null) "Photo Attached" else "Attach Receipt / Note Photo",
+                                text = when {
+                                    isUploadingPhoto -> "Uploading to Cloudinary..."
+                                    photoUriString != null -> "Photo Attached"
+                                    else -> "Attach Receipt / Note Photo"
+                                },
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
                             )
-                            if (photoUriString != null) {
+                            if (isUploadingPhoto) {
+                                Text("Please wait...", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            } else if (photoUriString != null) {
                                 Text("Tap to replace", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
