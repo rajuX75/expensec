@@ -17,8 +17,8 @@ android {
     applicationId = "com.rjx.expensex"
     minSdk = 24
     targetSdk = 36
-    versionCode = 17
-    versionName = "1.1.11"
+    versionCode = 18
+    versionName = "1.1.12"
 
     val envCloudName = System.getenv("CLOUDINARY_CLOUD_NAME") ?: ""
     val envApiKey = System.getenv("CLOUDINARY_API_KEY") ?: ""
