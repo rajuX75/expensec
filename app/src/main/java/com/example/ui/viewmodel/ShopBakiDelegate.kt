@@ -6,6 +6,8 @@ import com.example.data.model.Shop
 import com.example.data.model.ShopLedgerEntry
 import com.example.data.model.ShopProduct
 import com.example.data.model.ShopTimelineItem
+import com.example.data.model.TransactionEntity
+import com.example.data.repository.ExpenseRepository
 import com.example.data.model.ShopWithBalance
 import com.example.data.repository.ShopBakiRepository
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.firstOrNull
 class ShopBakiDelegate(
     private val viewModelScope: CoroutineScope,
     private val shopBakiRepository: ShopBakiRepository,
+    private val expenseRepository: ExpenseRepository,
     private val googleAuthManager: GoogleAuthManager,
     private val firestoreSyncManager: FirestoreSyncManager
 ) {
@@ -116,6 +119,13 @@ class ShopBakiDelegate(
         viewModelScope.launch(Dispatchers.IO) {
             val id = shopBakiRepository.insertLedgerEntry(entry)
             kotlinx.coroutines.withContext(Dispatchers.Main) { onCreated(id) }
+
+            // A PAYMENT is real money leaving the user's pocket -> it must also appear
+            // in the app's Recent Transactions list (PURCHASE is credit, not yet spent).
+            if (entry.type == "PAYMENT") {
+                logPaymentToRecentTransactions(entry)
+            }
+
             googleAuthManager.currentUserId?.let { uid ->
                 // Resolve UUIDs for FK references
                 val shop = shopBakiRepository.getShopById(entry.shopId).firstOrNull()
@@ -124,6 +134,38 @@ class ShopBakiDelegate(
                     shopBakiRepository.getProductUuidById(pid)
                 }
                 firestoreSyncManager.pushShopLedgerEntry(uid, entry, shopUuid, productUuid)
+            }
+        }
+    }
+
+    // Mirror a shop payment into the main transactions table so it shows up in
+    // "Recent Transactions" and is included in expense totals/analytics.
+    private suspend fun logPaymentToRecentTransactions(entry: ShopLedgerEntry) {
+        runCatching {
+            val shopName = shopBakiRepository.getShopById(entry.shopId).firstOrNull()?.name ?: "Shop"
+            val categories = expenseRepository.allCategories.firstOrNull().orEmpty()
+            val cat = categories.firstOrNull { it.type == "EXPENSE" && it.name.equals("Shopping", true) }
+                ?: categories.firstOrNull { it.type == "EXPENSE" && it.name.equals("Groceries", true) }
+                ?: categories.firstOrNull { it.type == "EXPENSE" }
+            val account = expenseRepository.allAccounts.firstOrNull()?.firstOrNull()
+            val tx = TransactionEntity(
+                type = "EXPENSE",
+                amount = entry.amount,
+                categoryId = cat?.id ?: 0,
+                categoryName = cat?.name ?: "Shopping",
+                categoryIcon = cat?.iconName ?: "storefront",
+                categoryColorHex = cat?.colorHex ?: "#E11D48",
+                accountId = account?.id ?: 1,
+                accountName = account?.name ?: "Main Account",
+                date = entry.date,
+                note = entry.note?.takeIf { it.isNotBlank() } ?: "Paid shop baki to $shopName",
+                merchant = shopName,
+                paymentMethod = "Shop Baki",
+                tags = "ShopBaki, Payment"
+            )
+            val newId = expenseRepository.insertTransaction(tx)
+            googleAuthManager.currentUserId?.let { uid ->
+                firestoreSyncManager.pushTransaction(uid, tx.copy(id = newId))
             }
         }
     }

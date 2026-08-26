@@ -58,3 +58,15 @@ Patch release focused on fixing Cloudinary image upload & delivery.
 
 - `versionCode` 10 → **11**
 - `versionName` `1.1.4` → **`1.1.5`**
+
+## [1.1.11] - 2026-08-26
+### Fixed
+- **Category list duplicating on every app update / sync** — root cause: `MIGRATION_1_2` left existing rows with a blank `uuid`, and the syncer inserted with `id = 0` (REPLACE only matched the PK), so each sync re-inserted the full default set. Now: blank UUIDs are backfilled, duplicate name+type rows are collapsed on startup, seeding only runs on an empty table, and the category syncer upserts by `uuid` then `name+type` so it UPDATEs instead of duplicate-INSERTing.
+- **Shop Baki payments now appear in Recent Transactions** — paying a shop owner logs a mirrored EXPENSE transaction (merchant = shop name, tag `ShopBaki`, note "Paid shop baki to …") and pushes it with the real row id.
+- **Bill-paid / transfer Firestore push duplication** — `markBillAsPaid` and `transferFunds` now capture the inserted row id before pushing (prevents the realtime listener inserting a duplicate copy).
+
+### Improved
+- **Shop Baki UI/UX (per UI/UX Pro Max guidance)** — gradient overview header with "You Owe" vs "Active Shops" semantic color zones, stronger visual hierarchy and elevation, content descriptions on action buttons, 44dp+ touch targets preserved, no emoji-as-icon usage.
+
+### Version
+- `versionCode` 16 → **17**, `versionName` 1.1.10 → **1.1.11**

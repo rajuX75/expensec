@@ -188,6 +188,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val shopBakiDelegate = ShopBakiDelegate(
         viewModelScope = viewModelScope,
         shopBakiRepository = shopBakiRepository,
+        expenseRepository = repository,
         googleAuthManager = googleAuthManager,
         firestoreSyncManager = firestoreSyncManager
     )
@@ -674,9 +675,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                     paymentMethod = "Auto Bill Pay",
                     tags = "BillPay, ${bill.frequency}"
                 )
-                repository.insertTransaction(tx)
+                val newId = repository.insertTransaction(tx)
                 googleAuthManager.currentUserId?.let { uid ->
-                    firestoreSyncManager.pushTransaction(uid, tx)
+                    firestoreSyncManager.pushTransaction(uid, tx.copy(id = newId))
                 }
             }
         }
@@ -706,9 +707,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 paymentMethod = "Transfer",
                 tags = "Transfer"
             )
-            repository.insertTransaction(transferTx)
+            val newId = repository.insertTransaction(transferTx)
             googleAuthManager.currentUserId?.let { uid ->
-                firestoreSyncManager.pushTransaction(uid, transferTx)
+                firestoreSyncManager.pushTransaction(uid, transferTx.copy(id = newId))
             }
         }
     }

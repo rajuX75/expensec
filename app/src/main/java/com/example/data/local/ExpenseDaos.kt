@@ -92,6 +92,20 @@ interface CategoryDao {
 
     @Query("DELETE FROM categories")
     suspend fun deleteAllCategories()
+
+    // Assign a fresh UUID to any legacy row whose uuid is blank (MIGRATION_1_2 left '').
+    @Query("UPDATE categories SET uuid = lower(hex(randomblob(16))) WHERE uuid = ''")
+    suspend fun backfillBlankUuids()
+
+    // Delete duplicate categories sharing the same name+type, keeping the row with the smallest id.
+    @Query("""DELETE FROM categories WHERE id NOT IN (
+        SELECT MIN(id) FROM categories GROUP BY name, type
+    )""")
+    suspend fun deleteDuplicateCategories()
+
+    // Find a category by its natural key so sync upserts never create name duplicates.
+    @Query("SELECT * FROM categories WHERE name = :name AND type = :type LIMIT 1")
+    suspend fun getCategoryByNameAndType(name: String, type: String): CategoryEntity?
 }
 
 @Dao

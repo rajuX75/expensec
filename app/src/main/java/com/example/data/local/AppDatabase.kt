@@ -187,32 +187,36 @@ abstract class AppDatabase : RoomDatabase() {
             val categoryDao = database.categoryDao()
             val accountDao = database.accountDao()
 
-            // Prepopulate Default Categories only
-            val defaultCategories = listOf(
-                // Expenses
-                CategoryEntity(name = "Food & Dining", iconName = "restaurant", colorHex = "#EF4444", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Groceries", iconName = "shopping_cart", colorHex = "#F59E0B", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Transportation", iconName = "directions_car", colorHex = "#3B82F6", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Shopping", iconName = "shopping_bag", colorHex = "#EC4899", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Housing & Rent", iconName = "home", colorHex = "#8B5CF6", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Utilities", iconName = "bolt", colorHex = "#06B6D4", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Entertainment", iconName = "movie", colorHex = "#10B981", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Health & Medical", iconName = "local_hospital", colorHex = "#F43F5E", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Travel", iconName = "flight", colorHex = "#6366F1", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Subscriptions", iconName = "subscriptions", colorHex = "#84CC16", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Education", iconName = "school", colorHex = "#14B8A6", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Personal Care", iconName = "spa", colorHex = "#D946EF", type = "EXPENSE", isDefault = true),
-                CategoryEntity(name = "Miscellaneous", iconName = "category", colorHex = "#64748B", type = "EXPENSE", isDefault = true),
+            // Backfill blank UUIDs left by MIGRATION_1_2 so sync never duplicates.
+            categoryDao.backfillBlankUuids()
+            // Remove duplicate categories (same name+type) keeping the oldest row.
+            categoryDao.deleteDuplicateCategories()
 
-                // Income
-                CategoryEntity(name = "Salary", iconName = "payments", colorHex = "#10B981", type = "INCOME", isDefault = true),
-                CategoryEntity(name = "Freelance", iconName = "work", colorHex = "#059669", type = "INCOME", isDefault = true),
-                CategoryEntity(name = "Investments", iconName = "trending_up", colorHex = "#0D9488", type = "INCOME", isDefault = true),
-                CategoryEntity(name = "Bonus", iconName = "redeem", colorHex = "#EAB308", type = "INCOME", isDefault = true),
-                CategoryEntity(name = "Rental", iconName = "apartment", colorHex = "#6366F1", type = "INCOME", isDefault = true),
-                CategoryEntity(name = "Other Income", iconName = "account_balance_wallet", colorHex = "#3B82F6", type = "INCOME", isDefault = true)
-            )
-            categoryDao.insertCategories(defaultCategories)
+            // Only seed defaults on a truly empty table (idempotent; never re-seed on sync).
+            if (categoryDao.getCategoryCount() == 0) {
+                val defaultCategories = listOf(
+                    CategoryEntity(name = "Food & Dining", iconName = "restaurant", colorHex = "#EF4444", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Groceries", iconName = "shopping_cart", colorHex = "#F59E0B", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Transportation", iconName = "directions_car", colorHex = "#3B82F6", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Shopping", iconName = "shopping_bag", colorHex = "#EC4899", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Housing & Rent", iconName = "home", colorHex = "#8B5CF6", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Utilities", iconName = "bolt", colorHex = "#06B6D4", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Entertainment", iconName = "movie", colorHex = "#10B981", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Health & Medical", iconName = "local_hospital", colorHex = "#F43F5E", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Travel", iconName = "flight", colorHex = "#6366F1", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Subscriptions", iconName = "subscriptions", colorHex = "#84CC16", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Education", iconName = "school", colorHex = "#14B8A6", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Personal Care", iconName = "spa", colorHex = "#D946EF", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Miscellaneous", iconName = "category", colorHex = "#64748B", type = "EXPENSE", isDefault = true),
+                    CategoryEntity(name = "Salary", iconName = "payments", colorHex = "#10B981", type = "INCOME", isDefault = true),
+                    CategoryEntity(name = "Freelance", iconName = "work", colorHex = "#059669", type = "INCOME", isDefault = true),
+                    CategoryEntity(name = "Investments", iconName = "trending_up", colorHex = "#0D9488", type = "INCOME", isDefault = true),
+                    CategoryEntity(name = "Bonus", iconName = "redeem", colorHex = "#EAB308", type = "INCOME", isDefault = true),
+                    CategoryEntity(name = "Rental", iconName = "apartment", colorHex = "#6366F1", type = "INCOME", isDefault = true),
+                    CategoryEntity(name = "Other Income", iconName = "account_balance_wallet", colorHex = "#3B82F6", type = "INCOME", isDefault = true)
+                )
+                categoryDao.insertCategories(defaultCategories)
+            }
 
             // Initial blank default account with 0.00 balance
             val defaultAccounts = listOf(

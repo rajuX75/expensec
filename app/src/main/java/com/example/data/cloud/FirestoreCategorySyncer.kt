@@ -18,6 +18,31 @@ class FirestoreCategorySyncer(
 ) {
     private val tag = "FirestoreCategorySyncer"
 
+    // Upsert a remote category locally without ever creating a duplicate:
+    // match by uuid first, then by (name+type); reuse the existing row id so
+    // OnConflictStrategy.REPLACE performs an UPDATE instead of an INSERT.
+    private suspend fun com.example.data.local.CategoryDao.upsertFromRemote(
+        uuid: String,
+        name: String,
+        iconName: String,
+        colorHex: String,
+        type: String,
+        isDefault: Boolean
+    ) {
+        val byUuid = getCategoryByUuid(uuid)
+        val existing = byUuid ?: getCategoryByNameAndType(name, type)
+        val entity = CategoryEntity(
+            id = existing?.id ?: 0L,
+            uuid = uuid,
+            name = name,
+            iconName = iconName,
+            colorHex = colorHex,
+            type = type,
+            isDefault = isDefault
+        )
+        insertCategory(entity)
+    }
+
     fun attachRealtimeListener(userId: String, scope: CoroutineScope): ListenerRegistration {
         return firestore.collection("users").document(userId)
             .collection("categories")
@@ -35,9 +60,7 @@ class FirestoreCategorySyncer(
                             try {
                                 val data = doc.data ?: continue
                                 val uuid = doc.id
-                                val existing = database.categoryDao().getCategoryByUuid(uuid)
-                                val entity = CategoryEntity(
-                                    id = existing?.id ?: 0L,
+                                database.categoryDao().upsertFromRemote(
                                     uuid = uuid,
                                     name = data["name"] as? String ?: "",
                                     iconName = data["iconName"] as? String ?: "category",
@@ -45,7 +68,6 @@ class FirestoreCategorySyncer(
                                     type = data["type"] as? String ?: "EXPENSE",
                                     isDefault = data["isDefault"] as? Boolean ?: false
                                 )
-                                database.categoryDao().insertCategory(entity)
                             } catch (e: Exception) {
                                 Log.e(tag, "Error processing realtime category: ${e.message}")
                             }
@@ -79,9 +101,7 @@ class FirestoreCategorySyncer(
             val data = doc.data ?: continue
             val uuid = doc.id
             remoteUuids.add(uuid)
-            val existing = database.categoryDao().getCategoryByUuid(uuid)
-            val entity = CategoryEntity(
-                id = existing?.id ?: 0L,
+            database.categoryDao().upsertFromRemote(
                 uuid = uuid,
                 name = data["name"] as? String ?: "",
                 iconName = data["iconName"] as? String ?: "category",
@@ -89,7 +109,6 @@ class FirestoreCategorySyncer(
                 type = data["type"] as? String ?: "EXPENSE",
                 isDefault = data["isDefault"] as? Boolean ?: false
             )
-            database.categoryDao().insertCategory(entity)
         }
 
         // Delete local items that were removed from Firestore (prevent resurrection).
