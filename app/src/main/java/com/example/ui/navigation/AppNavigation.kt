@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.model.TransactionEntity
+import com.example.ui.components.NotificationPopupDialog
 import com.example.ui.components.UpdateDialog
 import com.example.ui.screens.*
 import com.example.ui.screens.dhaar.ContactDetailScreen
@@ -64,6 +65,11 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
     var showShopBakiScreen by remember { mutableStateOf(false) }
     var selectedShopIdForDetail by remember { mutableStateOf<Long?>(null) }
 
+    // Notifications inbox state
+    var showNotificationsScreen by remember { mutableStateOf(false) }
+    val unreadNotificationCount by viewModel.unreadNotificationCount.collectAsState()
+    val popupNotification by viewModel.popupNotification.collectAsState()
+
     // Bottom Navigation items (Clean 4-tab bar)
     val bottomNavScreens = remember {
         listOf(
@@ -77,6 +83,7 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
     // Handle back button hierarchy
     BackHandler(
         enabled = showAddEditTransactionSheet ||
+                showNotificationsScreen ||
                 showSettingsSheet ||
                 selectedContactIdForDetail != null ||
                 selectedShopIdForDetail != null ||
@@ -88,6 +95,7 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
     ) {
         when {
             showAddEditTransactionSheet -> showAddEditTransactionSheet = false
+            showNotificationsScreen -> showNotificationsScreen = false
             showSettingsSheet -> showSettingsSheet = false
             selectedContactIdForDetail != null -> selectedContactIdForDetail = null
             selectedShopIdForDetail != null -> selectedShopIdForDetail = null
@@ -127,6 +135,11 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
         ImportDataScreen(
             viewModel = viewModel,
             onNavigateBack = { showImportScreen = false }
+        )
+    } else if (showNotificationsScreen) {
+        NotificationsScreen(
+            viewModel = viewModel,
+            onNavigateBack = { showNotificationsScreen = false }
         )
     } else if (showProfileScreen) {
         ProfileScreen(
@@ -177,6 +190,27 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
                         }
                     },
                     actions = {
+                        // Notifications bell with unread badge — left of the settings icon
+                        BadgedBox(
+                            badge = {
+                                if (unreadNotificationCount > 0) {
+                                    Badge {
+                                        Text(
+                                            text = if (unreadNotificationCount > 99) "99+" else unreadNotificationCount.toString(),
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            IconButton(onClick = { showNotificationsScreen = true }) {
+                                Icon(
+                                    imageVector = if (unreadNotificationCount > 0) Icons.Default.Notifications else Icons.Outlined.Notifications,
+                                    contentDescription = "Notifications",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                         IconButton(onClick = { showSettingsSheet = true }) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
@@ -374,5 +408,17 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
                 viewModel.dismissUpdatePrompt()
             }
         )
+    }
+
+    // Admin notification popup shown on app open.
+    // Closes via the system BACK press or its dedicated close button.
+    popupNotification?.let { notification ->
+        if (!showSettingsSheet && !showNotificationsScreen) {
+            NotificationPopupDialog(
+                notification = notification,
+                onDismiss = { viewModel.dismissNotificationPopup() },
+                onActionClick = { url -> viewModel.openNotificationAction(url) }
+            )
+        }
     }
 }

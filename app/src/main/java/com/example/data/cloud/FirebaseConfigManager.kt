@@ -38,6 +38,7 @@ class FirebaseConfigManager(
     private var versionRef: DatabaseReference? = null
     private var configRef: DatabaseReference? = null
     private var changelogRef: DatabaseReference? = null
+    private var notificationsRef: DatabaseReference? = null
 
     private val _remoteConfig = MutableStateFlow(AppRemoteConfig())
     val remoteConfig: StateFlow<AppRemoteConfig> = _remoteConfig.asStateFlow()
@@ -47,6 +48,9 @@ class FirebaseConfigManager(
 
     private val _releaseHistory = MutableStateFlow<List<VersionReleaseLog>>(emptyList())
     val releaseHistory: StateFlow<List<VersionReleaseLog>> = _releaseHistory.asStateFlow()
+
+    private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
+    val notifications: StateFlow<List<AppNotification>> = _notifications.asStateFlow()
 
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
@@ -77,6 +81,7 @@ class FirebaseConfigManager(
             versionRef = database?.getReference("app_version")
             configRef = database?.getReference("app_config")
             changelogRef = database?.getReference("changelog")
+            notificationsRef = database?.getReference("notifications")
             try {
                 setupRealtimeListeners()
             } catch (e: Exception) {
@@ -150,6 +155,23 @@ class FirebaseConfigManager(
                 Log.w(TAG, "Changelog listener cancelled: ${error.message}")
             }
         })
+
+        // 4. Admin notifications inbox listener
+        notificationsRef?.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                try {
+                    _notifications.value = parseNotificationsFromSnapshot(snapshot)
+                    _isConnected.value = true
+                    Log.d(TAG, "Realtime DB: Loaded ${_notifications.value.size} notifications")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing notifications from Realtime DB", e)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.w(TAG, "Notifications listener cancelled: ${error.message}")
+            }
+        })
     }
 
     /**
@@ -190,6 +212,11 @@ class FirebaseConfigManager(
                                 if (logs.isNotEmpty()) {
                                     _releaseHistory.value = logs
                                 }
+                            }
+
+                            // Parse notifications inbox
+                            if (rootJson.has("notifications")) {
+                                _notifications.value = parseNotificationsFromJson(rootJson.getJSONObject("notifications"))
                             }
 
                             _isConnected.value = true
@@ -361,6 +388,75 @@ class FirebaseConfigManager(
             list.add(VersionReleaseLog(name, code, date, title, changes = items))
         }
         return list.sortedByDescending { it.versionCode }
+    }
+
+    private fun parseNotificationsFromSnapshot(snapshot: DataSnapshot): List<AppNotification> {
+        val list = mutableListOf<AppNotification>()
+        for (child in snapshot.children) {
+            try {
+                val n = parseNotificationSnapshot(child) ?: continue
+                list.add(n)
+            } catch (e: Exception) {
+                Log.w(TAG, "Skipping malformed notification ${child.key}: ${e.message}")
+            }
+        }
+        return list
+    }
+
+    private fun parseNotificationSnapshot(child: DataSnapshot): AppNotification? {
+        val title = child.child("title").getValue(String::class.java)
+            ?: child.child("message").getValue(String::class.java)
+            ?: return null
+        val id = child.child("id").getValue(String::class.java) ?: child.key ?: return null
+        val message = child.child("message").getValue(String::class.java) ?: ""
+        val type = NotificationType.fromString(child.child("type").getValue(String::class.java))
+        val timestamp = child.child("timestamp").getValue(Long::class.java)
+            ?: child.child("createdAt").getValue(Long::class.java)
+            ?: 0L
+        val actionUrl = child.child("actionUrl").getValue(String::class.java)?.takeIf { it.isNotBlank() }
+        val actionText = child.child("actionText").getValue(String::class.java)?.takeIf { it.isNotBlank() }
+        val iconEmoji = (child.child("iconEmoji").getValue(String::class.java)
+            ?: child.child("emoji").getValue(String::class.java))?.takeIf { it.isNotBlank() }
+        val accentColorHex = (child.child("accentColorHex").getValue(String::class.java)
+            ?: child.child("color").getValue(String::class.java))?.takeIf { AppNotification.parseHexColor(it) != null }
+        val showPopup = child.child("showPopup").getValue(Boolean::class.java) ?: false
+        val dismissible = child.child("dismissible").getValue(Boolean::class.java) ?: true
+        val active = child.child("active").getValue(Boolean::class.java) ?: true
+
+        return AppNotification(id, title, message, type, timestamp, actionUrl, actionText, iconEmoji, accentColorHex, showPopup, dismissible, active)
+    }
+
+    private fun parseNotificationsFromJson(json: JSONObject): List<AppNotification> {
+        val list = mutableListOf<AppNotification>()
+        val keys = json.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val child = json.optJSONObject(key) ?: continue
+            try {
+                val title = child.optString("title", "").ifBlank { child.optString("message", "") }
+                if (title.isBlank()) continue
+                list.add(
+                    AppNotification(
+                        id = child.optString("id", "").ifBlank { key },
+                        title = title,
+                        message = child.optString("message", ""),
+                        type = NotificationType.fromString(child.optString("type", "INFO")),
+                        timestamp = child.optLong("timestamp", child.optLong("createdAt", 0L)),
+                        actionUrl = child.optString("actionUrl").takeIf { it.isNotBlank() },
+                        actionText = child.optString("actionText").takeIf { it.isNotBlank() },
+                        iconEmoji = child.optString("iconEmoji", child.optString("emoji", "")).takeIf { it.isNotBlank() },
+                        accentColorHex = child.optString("accentColorHex", child.optString("color", ""))
+                            .takeIf { it.isNotBlank() && AppNotification.parseHexColor(it) != null },
+                        showPopup = child.optBoolean("showPopup", false),
+                        dismissible = child.optBoolean("dismissible", true),
+                        active = child.optBoolean("active", true)
+                    )
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "Skipping malformed notification $key: ${e.message}")
+            }
+        }
+        return list
     }
 
     private fun detectChangelogType(text: String): ChangelogType {

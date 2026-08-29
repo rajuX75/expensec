@@ -220,6 +220,18 @@ class UserPreferencesRepository(context: Context) {
     )
     val lastUpdateCheckTime: StateFlow<Long> = _lastUpdateCheckTime.asStateFlow()
 
+    // In-App Notification Preferences (per-device local state for RTDB notifications)
+    private val _readNotificationIds = MutableStateFlow(safeStringSet("read_notification_ids"))
+    val readNotificationIds: StateFlow<Set<String>> = _readNotificationIds.asStateFlow()
+
+    private val _deletedNotificationIds = MutableStateFlow(safeStringSet("deleted_notification_ids"))
+    val deletedNotificationIds: StateFlow<Set<String>> = _deletedNotificationIds.asStateFlow()
+
+    private val _lastSeenPopupNotificationId = MutableStateFlow<String?>(
+        safeStringOrNull("last_seen_popup_notification_id")
+    )
+    val lastSeenPopupNotificationId: StateFlow<String?> = _lastSeenPopupNotificationId.asStateFlow()
+
     private fun getOrMigratePinHash(): String {
         val existingHash = safeString("pin_code_hash", "")
         if (existingHash.isNotBlank()) return existingHash
@@ -408,6 +420,49 @@ class UserPreferencesRepository(context: Context) {
     fun setLastUpdateCheckTime(timestamp: Long = System.currentTimeMillis()) {
         prefs.edit().putLong("last_update_check_time", timestamp).apply()
         _lastUpdateCheckTime.value = timestamp
+    }
+
+    // --- In-App Notification setters ---
+    private fun safeStringSet(key: String): Set<String> = try {
+        prefs.getStringSet(key, emptySet())?.toSet() ?: emptySet()
+    } catch (e: Exception) {
+        try { prefs.edit().remove(key).apply() } catch (_: Exception) {}
+        emptySet()
+    }
+
+    fun addReadNotificationId(id: String) {
+        if (id.isBlank()) return
+        val updated = _readNotificationIds.value + id
+        prefs.edit().putStringSet("read_notification_ids", updated).apply()
+        _readNotificationIds.value = updated
+    }
+
+    fun addReadNotificationIds(ids: Set<String>) {
+        val valid = ids.filter { it.isNotBlank() }
+        if (valid.isEmpty()) return
+        val updated = _readNotificationIds.value + valid
+        prefs.edit().putStringSet("read_notification_ids", updated).apply()
+        _readNotificationIds.value = updated
+    }
+
+    fun addDeletedNotificationId(id: String) {
+        if (id.isBlank()) return
+        val updated = _deletedNotificationIds.value + id
+        prefs.edit().putStringSet("deleted_notification_ids", updated).apply()
+        _deletedNotificationIds.value = updated
+    }
+
+    fun addDeletedNotificationIds(ids: Set<String>) {
+        val valid = ids.filter { it.isNotBlank() }
+        if (valid.isEmpty()) return
+        val updated = _deletedNotificationIds.value + valid
+        prefs.edit().putStringSet("deleted_notification_ids", updated).apply()
+        _deletedNotificationIds.value = updated
+    }
+
+    fun setLastSeenPopupNotificationId(id: String?) {
+        prefs.edit().putString("last_seen_popup_notification_id", id).apply()
+        _lastSeenPopupNotificationId.value = id
     }
 
     fun registerPrefChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener) {

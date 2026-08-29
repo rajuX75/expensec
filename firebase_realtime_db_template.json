@@ -3,7 +3,7 @@
     "versionCode": 4,
     "versionName": "1.1.2",
     "minSupportedVersionCode": 1,
-    "releaseTitle": "v1.1.2 — Automated Release & Smart Sync",
+    "releaseTitle": "v1.1.2 \u2014 Automated Release & Smart Sync",
     "releaseNotes": "Automated release triggered from GitHub Actions.",
     "downloadUrl": "https://github.com/rajuX75/expensec/releases/latest/download/app-release.apk",
     "releaseDate": "2026-08-22",
@@ -70,6 +70,46 @@
         "Sleek, compact search bar and refined Material 3 UI",
         "Fixed phone contact selection crash with safe permission-free picker"
       ]
+    }
+  },
+  "notifications": {
+    "notif_welcome": {
+      "id": "notif_welcome",
+      "title": "Welcome to Expense Tracker!",
+      "message": "Track expenses, manage Dhaar debts & shop credit, and sync everything in real-time. Press back or tap \u2715 to close this popup.",
+      "type": "INFO",
+      "timestamp": 1756000000000,
+      "iconEmoji": "\ud83c\udf89",
+      "accentColorHex": "#6366F1",
+      "actionUrl": "https://github.com/rajuX75/expensec",
+      "actionText": "Learn More",
+      "showPopup": true,
+      "dismissible": true,
+      "active": true
+    },
+    "notif_sample_offer": {
+      "id": "notif_sample_offer",
+      "title": "New Feature: Shop Baki",
+      "message": "You can now track shop credit (Baki) with rich shop profiles and product inventory.",
+      "type": "PROMO",
+      "timestamp": 1756100000000,
+      "iconEmoji": "\ud83d\uded2",
+      "showPopup": false,
+      "dismissible": true,
+      "active": false
+    }
+  },
+  "feedback": {
+    "_example": {
+      "type": "FEATURE_REQUEST",
+      "message": "It would be great to have multi-currency support for individual transactions.",
+      "appVersion": "1.1.11",
+      "appVersionCode": 17,
+      "deviceModel": "Pixel 6",
+      "androidVersion": "13",
+      "timestamp": 1756200000000,
+      "userId": "anonymous",
+      "email": "user@example.com"
     }
   }
 }

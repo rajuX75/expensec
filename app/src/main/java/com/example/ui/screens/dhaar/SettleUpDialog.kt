@@ -23,6 +23,7 @@ import com.example.ui.theme.IncomeGreen
 import com.example.ui.viewmodel.ExpenseViewModel
 import java.util.*
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +54,25 @@ fun SettleUpDialog(
     }
     var accountDropdownExpanded by remember { mutableStateOf(false) }
     var amountError by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var photoUriString by remember { mutableStateOf<String?>(null) }
+    var isUploadingPhoto by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        uri?.let {
+            isUploadingPhoto = true
+            photoUriString = it.toString()
+            scope.launch {
+                val saved = com.example.ui.components.ImageStorageHelper.saveImageLocally(context, it, "receipts")
+                photoUriString = saved ?: it.toString()
+                isUploadingPhoto = false
+            }
+        }
+    }
 
     val parsedAmount = amountText.toDoubleOrNull() ?: 0.0
     val isOverpaying = parsedAmount > (outstandingAbs + 0.001)
@@ -245,6 +265,57 @@ fun SettleUpDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Photo Attachment
+                OutlinedCard(
+                    onClick = { imagePickerLauncher.launch("image/*") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isUploadingPhoto) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else if (photoUriString != null) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.AddPhotoAlternate,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = if (photoUriString != null) "Attachment Added"
+                                       else if (isUploadingPhoto) "Processing image..."
+                                       else "Attach Receipt (Optional)",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                            )
+                            Text(
+                                text = if (photoUriString != null) "Tap to change photo" else "Optional proof of settlement",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (photoUriString != null && !isUploadingPhoto) {
+                            Spacer(modifier = Modifier.weight(1f))
+                            IconButton(onClick = { photoUriString = null }) {
+                                Icon(Icons.Default.Close, "Remove", tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+
                 // Optional Account Linking
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -325,7 +396,8 @@ fun SettleUpDialog(
                         date = System.currentTimeMillis(),
                         note = note.trim(),
                         linkedAccountId = if (linkToAccount) selectedAccountId else null,
-                        isSettlementGive = isGive
+                        isSettlementGive = isGive,
+                        tagPhotoUri = photoUriString
                     )
 
                     viewModel.addDhaarEntry(

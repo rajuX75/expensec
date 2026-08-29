@@ -50,6 +50,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val firestoreSyncManager = com.example.data.cloud.FirestoreSyncManager(application, database, userPrefs)
     val firebaseConfigManager = com.example.data.cloud.FirebaseConfigManager(application, viewModelScope)
     val updateRepository = com.example.data.repository.UpdateRepository(application, userPrefs, firebaseConfigManager)
+    val notificationRepository = com.example.data.repository.NotificationRepository(userPrefs, firebaseConfigManager, viewModelScope)
 
     init {
         // BUG FIX #1: Use REPLACE instead of KEEP so stale work enqueued by an older
@@ -106,6 +107,17 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     val autoCategorize = userPrefs.autoCategorize
     val defaultTransactionType = userPrefs.defaultTransactionType
     val hapticFeedback = userPrefs.hapticFeedback
+
+    // In-App Notifications (admin-published via Firebase Realtime DB, not FCM push)
+    val notifications: StateFlow<List<AppNotification>> = notificationRepository.notifications
+    val unreadNotificationCount: StateFlow<Int> = notificationRepository.unreadCount
+    val popupNotification: StateFlow<AppNotification?> = notificationRepository.popupNotification
+    fun markNotificationAsRead(id: String) = notificationRepository.markAsRead(id)
+    fun markAllNotificationsAsRead() = notificationRepository.markAllAsRead()
+    fun deleteNotification(id: String) = notificationRepository.delete(id)
+    fun clearAllNotifications() = notificationRepository.clearAll()
+    fun dismissNotificationPopup() = notificationRepository.dismissPopup()
+    fun openNotificationAction(url: String) = updateRepository.openInBrowser(url)
 
     // Firebase & Cloud State
     val firebaseUser = googleAuthManager.currentUser
@@ -199,6 +211,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         userPrefs = userPrefs
     )
 
+    val feedbackRepository = com.example.data.repository.FeedbackRepository()
+    val feedbackDelegate = FeedbackDelegate(
+        viewModelScope = viewModelScope,
+        feedbackRepository = feedbackRepository
+    )
+
     // Forwarding Analytics Properties & Functions
     val financialSummary: StateFlow<FinancialSummary> get() = analyticsDelegate.financialSummary
     val accountsWithBalances: StateFlow<List<AccountWithBalance>> get() = analyticsDelegate.accountsWithBalances
@@ -288,6 +306,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun dismissUpdatePrompt() = updateDelegate.dismissUpdatePrompt()
     fun downloadAndInstallUpdate(updateInfo: AppUpdateInfo) = updateDelegate.downloadAndInstallUpdate(updateInfo)
     fun setAutoCheckUpdates(enabled: Boolean) = updateDelegate.setAutoCheckUpdates(enabled)
+
+    // Forwarding Feedback Properties & Functions
+    val feedbackSubmitState get() = feedbackDelegate.feedbackSubmitState
+    fun submitFeedback(entry: com.example.data.model.FeedbackEntry) = feedbackDelegate.submitFeedback(entry)
+    fun resetFeedbackState() = feedbackDelegate.resetFeedbackState()
 
     init {
         loadSafetyBackups()

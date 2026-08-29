@@ -78,6 +78,9 @@ fun SettingsScreen(
     var showChangelogDialog by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     var legalDocToView by remember { mutableStateOf<com.example.data.model.LegalDocType?>(null) }
+    var showFeedbackDialog by remember { mutableStateOf(false) }
+    var feedbackInitialType by remember { mutableStateOf(com.example.data.model.FeedbackType.GENERAL) }
+    val feedbackSubmitState by viewModel.feedbackSubmitState.collectAsState()
 
     // Show update dialog when an update is available
     LaunchedEffect(updateCheckState) {
@@ -609,6 +612,57 @@ fun SettingsScreen(
             }
         }
 
+        // ── 8.5 Support & Feedback ─────────────────────────────
+        item {
+            SettingsSectionHeader(title = "Support & Feedback")
+        }
+        item {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SettingsItem(
+                        icon = Icons.Default.Feedback,
+                        title = "Send Feedback",
+                        subtitle = "Share your thoughts or general feedback",
+                        iconTint = Color(0xFF6366F1), // Indigo
+                        onClick = {
+                            feedbackInitialType = com.example.data.model.FeedbackType.GENERAL
+                            showFeedbackDialog = true
+                        }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    SettingsItem(
+                        icon = Icons.Default.BugReport,
+                        title = "Report a Bug",
+                        subtitle = "Let us know if something isn't working",
+                        iconTint = Color(0xFFEF4444), // Red
+                        onClick = {
+                            feedbackInitialType = com.example.data.model.FeedbackType.BUG_REPORT
+                            showFeedbackDialog = true
+                        }
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                    SettingsItem(
+                        icon = Icons.Default.Lightbulb,
+                        title = "Request a Feature",
+                        subtitle = "Got an idea? We'd love to hear it",
+                        iconTint = Color(0xFFF59E0B), // Amber
+                        onClick = {
+                            feedbackInitialType = com.example.data.model.FeedbackType.FEATURE_REQUEST
+                            showFeedbackDialog = true
+                        }
+                    )
+                }
+            }
+        }
+
         // ── 9. Legal & Documentation ─────────────────────────────
         item {
             SettingsSectionHeader(title = "Legal & Documentation")
@@ -863,6 +917,20 @@ fun SettingsScreen(
         com.example.ui.components.LegalDocsDialog(
             initialDoc = docType,
             onDismiss = { legalDocToView = null }
+        )
+    }
+
+    // Feedback Dialog
+    if (showFeedbackDialog) {
+        com.example.ui.components.FeedbackDialog(
+            initialType = feedbackInitialType,
+            appVersionName = viewModel.currentAppVersionName,
+            appVersionCode = viewModel.currentAppVersionCode,
+            firebaseUser = firebaseUser,
+            submitState = feedbackSubmitState,
+            onSubmit = { entry -> viewModel.submitFeedback(entry) },
+            onDismiss = { showFeedbackDialog = false },
+            onResetState = { viewModel.resetFeedbackState() }
         )
     }
 }

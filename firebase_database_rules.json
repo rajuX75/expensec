@@ -12,6 +12,10 @@
       ".read": true,
       ".write": "auth != null && auth.token.admin === true"
     },
+    "notifications": {
+      ".read": true,
+      ".write": "auth != null && auth.token.admin === true"
+    },
     "$other": {
       ".read": false,
       ".write": false
