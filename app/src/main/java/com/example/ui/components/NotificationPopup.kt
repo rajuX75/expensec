@@ -42,7 +42,10 @@ fun NotificationPopupDialog(
     Dialog(
         onDismissRequest = { if (notification.dismissible) onDismiss() },
         properties = DialogProperties(
-            dismissOnBackPress = true, // Back button always closes the popup
+            // Tie back-press to the same flag as click-outside so behaviour is
+            // consistent: a non-dismissible notification cannot be closed by
+            // back press OR clicking outside — only the X / action button works.
+            dismissOnBackPress = notification.dismissible,
             dismissOnClickOutside = notification.dismissible,
             usePlatformDefaultWidth = false
         )
@@ -139,7 +142,8 @@ fun NotificationPopupDialog(
                             Spacer(modifier = Modifier.width(4.dp))
                             Button(
                                 onClick = {
-                                    onDismiss()
+                                    // onActionClick is responsible for marking as read
+                                    // AND opening the URL — no need to also call onDismiss.
                                     notification.actionUrl?.let(onActionClick)
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = accent),

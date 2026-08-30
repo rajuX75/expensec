@@ -116,7 +116,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun markAllNotificationsAsRead() = notificationRepository.markAllAsRead()
     fun deleteNotification(id: String) = notificationRepository.delete(id)
     fun clearAllNotifications() = notificationRepository.clearAll()
-    fun dismissNotificationPopup() = notificationRepository.dismissPopup()
+    /** Dismiss the popup for the specific notification the user just closed/acted on. */
+    fun dismissNotificationPopup(notificationId: String) = notificationRepository.dismissPopup(notificationId)
+    /** Auto-dismiss the popup when the user opens the Notifications inbox (popup would reappear otherwise). */
+    fun dismissNotificationPopupIfShowing() = notificationRepository.dismissPopupIfShowing()
     fun openNotificationAction(url: String) = updateRepository.openInBrowser(url)
 
     // Firebase & Cloud State

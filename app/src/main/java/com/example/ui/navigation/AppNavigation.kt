@@ -203,7 +203,12 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
                                 }
                             }
                         ) {
-                            IconButton(onClick = { showNotificationsScreen = true }) {
+                            IconButton(onClick = {
+                                // Auto-dismiss any pending popup so it doesn't reappear
+                                // after the user comes back from the Notifications screen.
+                                viewModel.dismissNotificationPopupIfShowing()
+                                showNotificationsScreen = true
+                            }) {
                                 Icon(
                                     imageVector = if (unreadNotificationCount > 0) Icons.Default.Notifications else Icons.Outlined.Notifications,
                                     contentDescription = "Notifications",
@@ -411,13 +416,34 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
     }
 
     // Admin notification popup shown on app open.
-    // Closes via the system BACK press or its dedicated close button.
+    // Dismissal paths:
+    //  - Dedicated ✕ / "Dismiss" button   → calls onDismiss with the notification id
+    //  - Action button                      → marks read, then opens the URL
+    //  - Back press (Dialog property)       → dismisses only when notification.dismissible = true
+    // The popup never reappears because dismissPopup() persists the id to SharedPreferences
+    // via readNotificationIds, and popupNotification filters by id !in readIds.
+    //
+    // Only show the popup when the main scaffold (bottom nav) is active — suppressed on
+    // every full-screen overlay to avoid stacking dialogs on top of other screens.
+    val anyFullScreenOpen = showSettingsSheet ||
+        showNotificationsScreen ||
+        showExportScreen ||
+        showImportScreen ||
+        showProfileScreen ||
+        showShopBakiScreen ||
+        selectedShopIdForDetail != null ||
+        selectedContactIdForDetail != null
     popupNotification?.let { notification ->
-        if (!showSettingsSheet && !showNotificationsScreen) {
+        if (!anyFullScreenOpen) {
             NotificationPopupDialog(
                 notification = notification,
-                onDismiss = { viewModel.dismissNotificationPopup() },
-                onActionClick = { url -> viewModel.openNotificationAction(url) }
+                onDismiss = { viewModel.dismissNotificationPopup(notification.id) },
+                onActionClick = { url ->
+                    // Mark read first, then open URL — both happen even if the flow emits
+                    // null by the time the coroutine runs because id is captured here.
+                    viewModel.dismissNotificationPopup(notification.id)
+                    viewModel.openNotificationAction(url)
+                }
             )
         }
     }

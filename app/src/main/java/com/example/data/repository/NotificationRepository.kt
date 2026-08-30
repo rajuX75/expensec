@@ -47,16 +47,21 @@ class NotificationRepository(
     private val popupDismissedThisSession = MutableStateFlow(false)
 
     /**
-     * The newest popup-enabled notification this device has never seen.
-     * `null` when nothing should pop up.
+     * The newest popup-enabled notification this device has never read.
+     * `null` when nothing should pop up (dismissed this session, or all popup
+     * notifications have already been read on this device).
+     *
+     * Uses [readNotificationIds] (a Set) instead of a single lastSeenId so that:
+     *  - Multiple concurrent showPopup notifications are all suppressed once read.
+     *  - Marking a notification read in the inbox also prevents its popup.
      */
     val popupNotification: StateFlow<AppNotification?> = combine(
         notifications,
-        userPrefs.lastSeenPopupNotificationId,
+        userPrefs.readNotificationIds,
         popupDismissedThisSession
-    ) { list, lastSeenId, dismissed ->
+    ) { list, readIds, dismissed ->
         if (dismissed) null
-        else list.firstOrNull { it.showPopup && it.id != lastSeenId }
+        else list.firstOrNull { it.showPopup && it.id !in readIds }
     }.stateIn(scope, SharingStarted.WhileSubscribed(5000), null)
 
     fun markAsRead(id: String) = userPrefs.addReadNotificationId(id)
@@ -75,12 +80,28 @@ class NotificationRepository(
         userPrefs.addDeletedNotificationIds(ids)
     }
 
-    /** Dismiss the launch popup: mark it read and remember it so it never pops again. */
-    fun dismissPopup() {
-        popupNotification.value?.let {
-            userPrefs.addReadNotificationId(it.id)
-            userPrefs.setLastSeenPopupNotificationId(it.id)
+    /**
+     * Dismiss the launch popup for a specific notification.
+     * The [notificationId] is passed explicitly by the UI so we never rely on
+     * the StateFlow's `.value` (which starts as `null` and may momentarily be
+     * `null` when the flow has no subscribers).
+     */
+    fun dismissPopup(notificationId: String) {
+        if (notificationId.isNotBlank()) {
+            userPrefs.addReadNotificationId(notificationId)
+            userPrefs.setLastSeenPopupNotificationId(notificationId)
         }
         popupDismissedThisSession.value = true
+    }
+
+    /**
+     * Called when the user opens the Notifications screen while a popup would
+     * have been showing. The popup is suppressed by the screen check in the UI,
+     * but without this call it would reappear when the user navigates back.
+     * We mark it as read and remember it so it never pops up again.
+     */
+    fun dismissPopupIfShowing() {
+        val current = popupNotification.value ?: return
+        dismissPopup(current.id)
     }
 }
