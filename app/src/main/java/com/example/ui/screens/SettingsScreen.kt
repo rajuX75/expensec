@@ -234,12 +234,6 @@ fun SettingsScreen(
                 onShowMessage = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
             )
         }
-        item {
-            com.example.ui.components.CloudinarySyncCard(
-                viewModel = viewModel,
-                onShowMessage = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
-            )
-        }
 
         // ── 3. General Preferences ────────────────────────────────
         item {

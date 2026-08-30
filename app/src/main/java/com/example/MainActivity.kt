@@ -11,6 +11,8 @@ import com.example.ui.components.PinLockScreen
 import com.example.ui.navigation.ExpenseAppMain
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.ExpenseViewModel
+import com.example.utils.CrashLogCapture
+
 
 /**
  * Entry point for the app.
@@ -19,6 +21,9 @@ import com.example.ui.viewmodel.ExpenseViewModel
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install crash capture before anything else so all subsequent uncaught
+        // exceptions are written to disk and available for the next feedback report.
+        CrashLogCapture.install(this)
         super.onCreate(savedInstanceState)
         handleAppUpgrade()
         enableEdgeToEdge()

@@ -2,7 +2,12 @@ package com.example.ui.components
 
 import android.os.Build
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,6 +30,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.data.model.FeedbackEntry
 import com.example.data.model.FeedbackSubmitState
 import com.example.data.model.FeedbackType
+import com.example.utils.CrashLogCapture
 import com.google.firebase.auth.FirebaseUser
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,12 +49,28 @@ fun FeedbackDialog(
     var message by remember { mutableStateOf("") }
     var email by remember { mutableStateOf(firebaseUser?.email ?: "") }
     var includeDeviceInfo by remember { mutableStateOf(true) }
+    var showCrashLog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val isSubmitting = submitState is FeedbackSubmitState.Submitting
 
+    // Auto-load the last captured crash log from disk
+    val savedCrashLog = remember { CrashLogCapture.getLastCrashLog(context) }
+    val hasCrashLog = savedCrashLog != null
+
+    // When the type switches to CRASH_LOG, pre-expand the crash log preview
+    LaunchedEffect(selectedType) {
+        if (selectedType == FeedbackType.CRASH_LOG && hasCrashLog) {
+            showCrashLog = true
+        }
+    }
+
     LaunchedEffect(submitState) {
         if (submitState is FeedbackSubmitState.Success) {
+            // Clear the crash log from disk after a successful crash report submission
+            if (selectedType == FeedbackType.CRASH_LOG) {
+                CrashLogCapture.clearCrashLog(context)
+            }
             Toast.makeText(context, "Feedback sent! Thank you.", Toast.LENGTH_SHORT).show()
             onResetState()
             onDismiss()
@@ -76,7 +99,7 @@ fun FeedbackDialog(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header
+                // ── Header ─────────────────────────────────────────────────
                 Icon(
                     imageVector = Icons.Default.Feedback,
                     contentDescription = "Feedback",
@@ -91,7 +114,7 @@ fun FeedbackDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Type Chips
+                // ── Type Chips ─────────────────────────────────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -128,9 +151,109 @@ fun FeedbackDialog(
                     }
                 }
 
+                // ── Auto-captured crash log banner (Crash Log type) ────────
+                if (selectedType == FeedbackType.CRASH_LOG) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (hasCrashLog) {
+                        // Crash found — show collapsible preview
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.BugReport,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Crash log captured — will be attached",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(
+                                        onClick = { showCrashLog = !showCrashLog },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                    ) {
+                                        Text(
+                                            text = if (showCrashLog) "Hide" else "Preview",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+
+                                AnimatedVisibility(
+                                    visible = showCrashLog,
+                                    enter = expandVertically(),
+                                    exit = shrinkVertically()
+                                ) {
+                                    Column {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = 160.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                                .horizontalScroll(rememberScrollState())
+                                                .verticalScroll(rememberScrollState())
+                                                .padding(8.dp)
+                                        ) {
+                                            Text(
+                                                text = savedCrashLog ?: "",
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontSize = 10.sp
+                                                ),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // No crash recorded yet
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "No crash log found. Describe what happened below.",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Message Input
+                // ── Message Input ──────────────────────────────────────────
                 OutlinedTextField(
                     value = message,
                     onValueChange = { message = it },
@@ -144,7 +267,7 @@ fun FeedbackDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Email Input
+                // ── Email Input ────────────────────────────────────────────
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
@@ -157,7 +280,7 @@ fun FeedbackDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Device Info Toggle
+                // ── Device Info Toggle ─────────────────────────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -175,7 +298,7 @@ fun FeedbackDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Action Buttons
+                // ── Action Buttons ─────────────────────────────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -194,7 +317,7 @@ fun FeedbackDialog(
                                 Toast.makeText(context, "Please enter a message", Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
-                            
+
                             val entry = FeedbackEntry(
                                 type = selectedType,
                                 message = message.trim(),
@@ -203,7 +326,9 @@ fun FeedbackDialog(
                                 deviceModel = if (includeDeviceInfo) Build.MODEL else "hidden",
                                 androidVersion = if (includeDeviceInfo) Build.VERSION.RELEASE else "hidden",
                                 userId = firebaseUser?.uid ?: "anonymous",
-                                email = email.trim().takeIf { it.isNotEmpty() }
+                                email = email.trim().takeIf { it.isNotEmpty() },
+                                // Attach the crash log when submitting a crash report
+                                crashLog = if (selectedType == FeedbackType.CRASH_LOG) savedCrashLog else null
                             )
                             onSubmit(entry)
                         },

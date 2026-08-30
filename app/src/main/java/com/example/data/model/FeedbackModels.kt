@@ -19,7 +19,9 @@ data class FeedbackEntry(
     val androidVersion: String = "",
     val timestamp: Long = System.currentTimeMillis(),
     val userId: String = "anonymous",
-    val email: String? = null
+    val email: String? = null,
+    /** Automatically captured stack trace attached when the user sends a Crash Log. */
+    val crashLog: String? = null
 )
 
 sealed class FeedbackSubmitState {

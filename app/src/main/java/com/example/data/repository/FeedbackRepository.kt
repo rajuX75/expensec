@@ -36,7 +36,8 @@ class FeedbackRepository {
                 "androidVersion" to entry.androidVersion,
                 "timestamp" to entry.timestamp,
                 "userId" to entry.userId,
-                "email" to entry.email
+                "email" to entry.email,
+                "crashLog" to entry.crashLog
             )
 
             // Try saving to Firebase Realtime Database using REST API
