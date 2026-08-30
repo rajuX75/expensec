@@ -244,8 +244,14 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun parseBackupJson(jsonString: String): Result<AppBackup> = cloudDelegate.parseBackupJson(jsonString)
     fun importBackupData(backup: AppBackup, mode: ImportMode, onResult: (Result<ImportResult>) -> Unit) =
         cloudDelegate.importBackupData(backup, mode, onResult)
-    fun signInGoogle(activityContext: Context, webClientId: String = "", onResult: (Result<String>) -> Unit) =
-        cloudDelegate.signInGoogle(activityContext, webClientId, onResult)
+    fun signInGoogle(
+        activityContext: Context,
+        webClientId: String = "",
+        onFallbackToLegacy: ((android.content.Intent) -> Unit)? = null,
+        onResult: (Result<String>) -> Unit
+    ) = cloudDelegate.signInGoogle(activityContext, webClientId, onFallbackToLegacy, onResult)
+    fun handleLegacySignInResult(data: android.content.Intent?, onResult: (Result<String>) -> Unit) =
+        cloudDelegate.handleLegacySignInResult(data, onResult)
     fun authorizeDrive(activityContext: Context, onResult: (DriveAuthorizeResult) -> Unit) =
         cloudDelegate.authorizeDrive(activityContext, onResult)
     fun signOutGoogle(onComplete: () -> Unit) = cloudDelegate.signOutGoogle(onComplete)

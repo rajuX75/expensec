@@ -112,18 +112,81 @@ class GoogleAuthManager(
 
     /**
      * Signs in with Google (ID token) into Firebase Auth.
+     * Converts all exceptions to human-readable messages for the UI.
      *
      * @param activityContext must be an Activity so the interactive account picker can be shown.
      */
     suspend fun signIn(activityContext: Context, webClientId: String = ""): Result<String> =
         withContext(Dispatchers.Main) {
             val serverClientId = webClientId.ifBlank { DEFAULT_WEB_CLIENT_ID }
-
             runCatching {
                 signInWithFirebase(activityContext, serverClientId)
             }.recoverCatching { throwable ->
                 Log.e(TAG, "Google sign-in failed", throwable)
                 throw throwable.toReadableSignInError()
+            }
+        }
+
+    /**
+     * Same as [signIn] but does NOT convert exceptions — the raw exception type is
+     * preserved so callers (e.g. [CloudDelegate]) can inspect it and decide whether
+     * to fall back to the legacy [GoogleSignInClient] path (Xiaomi/MIUI fix).
+     */
+    suspend fun signInInternal(activityContext: Context, webClientId: String = ""): Result<String> =
+        withContext(Dispatchers.Main) {
+            val serverClientId = webClientId.ifBlank { DEFAULT_WEB_CLIENT_ID }
+            runCatching {
+                signInWithFirebase(activityContext, serverClientId)
+            }
+        }
+
+    // ── Legacy GoogleSignIn (Xiaomi / MIUI fallback) ─────────────────────────
+
+    /**
+     * Builds a classic [GoogleSignInClient] sign-in [Intent].
+     *
+     * Use this as a fallback when the modern Credential Manager API fails
+     * (e.g. on Xiaomi MIUI where the Credential Manager bottom-sheet is blocked).
+     * Launch the returned intent via [ActivityResultLauncher] and process the
+     * result with [handleLegacySignInResult].
+     */
+    fun getLegacySignInIntent(context: Context): android.content.Intent {
+        val gso = com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder(
+            com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN
+        )
+            .requestIdToken(DEFAULT_WEB_CLIENT_ID)
+            .requestEmail()
+            .build()
+        val client = com.google.android.gms.auth.api.signin.GoogleSignIn.getClient(context, gso)
+        return client.signInIntent
+    }
+
+    /**
+     * Processes the [android.content.Intent] returned by the legacy GoogleSignIn flow,
+     * extracts the ID token, and completes Firebase sign-in.
+     */
+    suspend fun handleLegacySignInResult(data: android.content.Intent?): Result<String> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val auth = firebaseAuth
+                    ?: throw Exception("Firebase is not initialised on this device.")
+                val task = com.google.android.gms.auth.api.signin.GoogleSignIn
+                    .getSignedInAccountFromIntent(data)
+                val account = task.getResult(
+                    com.google.android.gms.common.api.ApiException::class.java
+                )
+                val idToken = account.idToken
+                    ?: throw Exception("Google Sign-In did not return an ID token.")
+                val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
+                val authResult = auth.signInWithCredential(firebaseCredential).await()
+                _currentUser.value = authResult.user
+                Log.d(TAG, "Legacy Firebase sign-in successful: ${authResult.user?.uid}")
+                val email = authResult.user?.email ?: account.email ?: ""
+                userPreferencesRepository.setGoogleAccount(email.ifBlank { null }, null)
+                email
+            }.recoverCatching { t ->
+                Log.e(TAG, "Legacy sign-in result handling failed", t)
+                throw t.toReadableSignInError()
             }
         }
 
@@ -284,12 +347,23 @@ internal fun Throwable.toReadableSignInError(): Exception {
     val chain = generateSequence(this) { it.cause }.toList()
 
     if (this is NoCredentialException || chain.any { it is NoCredentialException }) {
-        return Exception(
-            "Google Sign-In could not show the account picker. " +
-                "Please ensure Google Play Services is up to date, then try again. " +
-                "(If this is a sideloaded APK, the app's signing certificate may need to be " +
-                "registered in the Firebase Console.)"
-        )
+        // Check if running on Xiaomi / MIUI where Credential Manager is commonly blocked
+        val isMiui = !android.os.Build.MANUFACTURER.isNullOrBlank() &&
+            android.os.Build.MANUFACTURER.lowercase().contains("xiaomi")
+        return if (isMiui) {
+            Exception(
+                "Google Sign-In could not open on this Xiaomi device. " +
+                    "Please go to Settings → Apps → Expense Tracker → Battery → " +
+                    "set to 'No restrictions', then try again."
+            )
+        } else {
+            Exception(
+                "Google Sign-In could not show the account picker. " +
+                    "Please ensure Google Play Services is up to date, then try again. " +
+                    "(If this is a sideloaded APK, the app's signing certificate may need to be " +
+                    "registered in the Firebase Console.)"
+            )
+        }
     }
 
     if (this is GetCredentialCancellationException) {
@@ -299,7 +373,11 @@ internal fun Throwable.toReadableSignInError(): Exception {
         return Exception("Google Sign-In was interrupted. Please try again.")
     }
     if (this is GetCredentialProviderConfigurationException) {
-        return Exception("Google Sign-In is not configured on this device. Please update Google Play services.")
+        return Exception(
+            "Google Sign-In is not configured on this device. " +
+                "Please update Google Play Services and ensure the app has not been " +
+                "restricted in MIUI battery or security settings."
+        )
     }
     if (this is GetCredentialCustomException) {
         return Exception(
@@ -308,10 +386,13 @@ internal fun Throwable.toReadableSignInError(): Exception {
         )
     }
     if (this is GetCredentialUnknownException) {
-        return Exception("Google Sign-In failed unexpectedly. Please try again or update Google Play services.")
+        return Exception("Google Sign-In failed unexpectedly. Please try again or update Google Play Services.")
     }
     if (this is GetCredentialException) {
-        return Exception("Google Sign-In failed or is unavailable on this device.")
+        return Exception(
+            "Google Sign-In failed or is unavailable on this device. " +
+                "If you are on a Xiaomi / MIUI device, try disabling battery optimization for this app."
+        )
     }
 
     if (this is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
@@ -326,3 +407,4 @@ internal fun Throwable.toReadableSignInError(): Exception {
 
     return Exception(this.message?.takeIf { it.isNotBlank() } ?: "Google Sign-In failed.")
 }
+

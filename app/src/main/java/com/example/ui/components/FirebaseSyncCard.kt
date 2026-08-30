@@ -1,6 +1,8 @@
 package com.example.ui.components
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -39,6 +41,20 @@ fun FirebaseSyncCard(
     val googleAccountEmail by viewModel.googleAccountEmail.collectAsState()
 
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
+
+    // Legacy GoogleSignIn launcher — fallback for Xiaomi / MIUI devices where the
+    // Credential Manager bottom-sheet is blocked by MIUI battery / security restrictions.
+    val legacySignInLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        viewModel.handleLegacySignInResult(result.data) { signInResult ->
+            signInResult.onSuccess { email ->
+                onShowMessage("Connected Firebase account: $email")
+            }.onFailure { err ->
+                onShowMessage("Sign-in error: ${err.message}")
+            }
+        }
+    }
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -227,7 +243,14 @@ fun FirebaseSyncCard(
 
                 Button(
                     onClick = {
-                        viewModel.signInGoogle(context) { result ->
+                        viewModel.signInGoogle(
+                            activityContext = context,
+                            onFallbackToLegacy = { intent ->
+                                // Credential Manager failed (typically on Xiaomi/MIUI) —
+                                // fall back to the classic Google account picker.
+                                legacySignInLauncher.launch(intent)
+                            }
+                        ) { result ->
                             result.onSuccess { email ->
                                 onShowMessage("Connected Firebase account: $email")
                             }.onFailure { err ->

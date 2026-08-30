@@ -2,12 +2,15 @@ package com.example.ui.viewmodel
 
 import android.app.Application
 import android.content.Context
+import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.example.data.cloud.CloudBackupRepository
 import com.example.data.cloud.CloudBackupResult
 import com.example.data.cloud.CloudConflictException
 import com.example.data.cloud.DriveAuthorizeResult
 import com.example.data.cloud.FirestoreSyncManager
 import com.example.data.cloud.GoogleAuthManager
+import com.example.data.cloud.toReadableSignInError
 import com.example.data.model.AppBackup
 import com.example.data.model.ImportMode
 import com.example.data.model.ImportResult
@@ -75,11 +78,66 @@ class CloudDelegate(
     }
 
     // Cloud Backup Actions
-    fun signInGoogle(activityContext: Context, webClientId: String = "", onResult: (Result<String>) -> Unit) {
+    fun signInGoogle(
+        activityContext: Context,
+        webClientId: String = "",
+        onFallbackToLegacy: ((android.content.Intent) -> Unit)? = null,
+        onResult: (Result<String>) -> Unit
+    ) {
         viewModelScope.launch {
             _isCloudSyncing.value = true
             _cloudSyncMessage.value = "Signing in to Google..."
-            val result = googleAuthManager.signIn(activityContext, webClientId)
+
+            // Use signInInternal so we get the raw exception type for fallback detection.
+            val result = googleAuthManager.signInInternal(activityContext, webClientId)
+
+            if (result.isFailure && onFallbackToLegacy != null) {
+                val ex = result.exceptionOrNull()
+                // Credential Manager failed — check if this is a class of exception
+                // that benefits from the legacy GoogleSignIn intent fallback (typical on
+                // Xiaomi / MIUI devices where the Credential Manager bottom-sheet is blocked).
+                val isCredentialManagerFailure = ex is GetCredentialException ||
+                    ex is NoCredentialException ||
+                    generateSequence(ex) { it.cause }.any {
+                        it is GetCredentialException || it is NoCredentialException
+                    }
+                if (isCredentialManagerFailure) {
+                    android.util.Log.w(
+                        "CloudDelegate",
+                        "Credential Manager failed (${ex?.javaClass?.simpleName}), " +
+                            "falling back to legacy GoogleSignIn intent"
+                    )
+                    _isCloudSyncing.value = false
+                    _cloudSyncMessage.value = null
+                    val legacyIntent = googleAuthManager.getLegacySignInIntent(activityContext)
+                    onFallbackToLegacy(legacyIntent)
+                    return@launch
+                }
+            }
+
+            _isCloudSyncing.value = false
+            _cloudSyncMessage.value = null
+
+            // Convert raw exception to a readable message for the UI.
+            val finalResult = result.recoverCatching { t ->
+                throw t.toReadableSignInError()
+            }
+            onResult(finalResult)
+        }
+    }
+
+    /**
+     * Call this with the [android.content.Intent] from [ActivityResult.data] after the
+     * legacy GoogleSignIn launcher returns. Completes the Firebase sign-in and calls [onResult].
+     */
+    fun handleLegacySignInResult(
+        data: android.content.Intent?,
+        onResult: (Result<String>) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isCloudSyncing.value = true
+            _cloudSyncMessage.value = "Completing sign-in..."
+            val result = googleAuthManager.handleLegacySignInResult(data)
             _isCloudSyncing.value = false
             _cloudSyncMessage.value = null
             onResult(result)
