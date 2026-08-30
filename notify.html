@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker — Notification Admin</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a24;
+      --surface2: #22222f;
+      --border: #2e2e40;
+      --primary: #6366f1;
+      --text: #f1f1f5;
+      --text-muted: #8b8ba8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 18px; font-weight: 700; }
+    header span.db { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+    .status-bar { padding: 8px 24px; font-size: 12px; display: flex; align-items: center; gap: 8px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; flex-shrink: 0; }
+    .dot.ok { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot.err { background: var(--error); }
+    .dot.loading { background: var(--warning); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    main { max-width: 1020px; margin: 0 auto; padding: 28px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 740px) { main { grid-template-columns: 1fr; } }
+
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .panel-header { padding: 13px 18px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; gap: 8px; }
+    .panel-body { padding: 18px; }
+
+    .presets { display: flex; flex-direction: column; gap: 9px; }
+    .preset-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; cursor: pointer; transition: border-color .15s, background .15s; display: flex; align-items: flex-start; gap: 12px; }
+    .preset-card:hover { border-color: var(--primary); background: #1f1f30; }
+    .preset-emoji { font-size: 22px; flex-shrink: 0; padding-top: 1px; }
+    .preset-info .name { font-weight: 600; font-size: 13px; }
+    .preset-info .desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .badges { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+    .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+
+    form { display: flex; flex-direction: column; gap: 13px; }
+    label { font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .06em; }
+    input, textarea, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; padding: 9px 12px; outline: none; transition: border-color .15s; font-family: inherit; }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 68px; }
+    select option { background: #1a1a24; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .color-row { display: flex; align-items: center; gap: 8px; }
+    .color-row input[type=color] { width: 38px; height: 36px; padding: 2px; cursor: pointer; border-radius: 8px; flex-shrink: 0; }
+    .color-row input[type=text] { flex: 1; }
+
+    .toggles { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 4px 14px; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .toggle-row:last-child { border-bottom: none; }
+    .tl { font-size: 13px; font-weight: 500; }
+    .ts { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; inset: 0; border-radius: 22px; background: var(--border); transition: .2s; }
+    .slider::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+    input:checked + .slider { background: var(--primary); }
+    input:checked + .slider::before { transform: translateX(18px); }
+
+    .btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; border: none; cursor: pointer; transition: opacity .15s, transform .1s; }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: .88; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--text); }
+    .btn-row { display: flex; gap: 8px; margin-top: 2px; }
+
+    .notif-list { display: flex; flex-direction: column; gap: 8px; }
+    .notif-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px; }
+    .ni-emoji { font-size: 20px; flex-shrink: 0; }
+    .ni-body { flex: 1; min-width: 0; }
+    .ni-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ni-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .ni-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .ni-btn { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--text-muted); padding: 4px 6px; border-radius: 6px; transition: background .12s, color .12s; }
+    .ni-btn:hover { background: var(--border); color: var(--text); }
+    .ni-btn.del:hover { background: #3a1515; color: var(--error); }
+
+    .empty-state { text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px; }
+
+    .note { background: #1a1428; border: 1px solid #3730a3; border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #a5b4fc; line-height: 1.7; margin-bottom: 14px; }
+    .note.warn { background: #1a1408; border-color: #78350f; color: var(--warning); }
+
+    pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 12px; overflow: auto; line-height: 1.6; }
+
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 20px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 10px; transition: transform .25s ease, opacity .25s; opacity: 0; z-index: 9999; white-space: nowrap; }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--success); color: var(--success); }
+    #toast.error { border-color: var(--error); color: var(--error); }
+  </style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:22px">💸</span>
+  <h1>Expense Tracker — Notification Admin</h1>
+  <span class="db" id="db-label">expenstracke-default-rtdb</span>
+</header>
+
+<div class="status-bar">
+  <div class="dot loading" id="status-dot"></div>
+  <span id="status-text">Connecting to Firebase…</span>
+</div>
+
+<main>
+  <!-- ── LEFT COLUMN ── -->
+  <div style="display:flex;flex-direction:column;gap:22px;">
+
+    <!-- Config -->
+    <div class="panel">
+      <div class="panel-header">⚙️ Firebase Config</div>
+      <div class="panel-body">
+        <div class="note">
+          ⚠️ <strong>Write rule required.</strong> Set <code>/notifications ".write": true</code>
+          in Firebase Console → Realtime Database → Rules (see right panel).
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <label>Database URL</label>
+            <input id="cfg-db-url" type="text" value="https://expenstracke-default-rtdb.firebaseio.com" />
+          </div>
+          <div>
+            <label>Auth Token <span style="font-weight:400;text-transform:none">(optional)</span></label>
+            <input id="cfg-token" type="password" placeholder="Firebase secret or ID token — leave blank for open rules" />
+          </div>
+          <button class="btn btn-outline" onclick="testConnection()">🔌 Test Connection</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Presets -->
+    <div class="panel">
+      <div class="panel-header">⚡ Quick Presets <span style="margin-left:4px;font-weight:400;text-transform:none;letter-spacing:0">(click to load)</span></div>
+      <div class="panel-body">
+        <div class="presets" id="presets-list"></div>
+      </div>
+    </div>
+
+    <!-- Compose form -->
+    <div class="panel">
+      <div class="panel-header">✏️ Compose Notification</div>
+      <div class="panel-body">
+        <form id="notif-form" onsubmit="sendNotification(event)">
+
+          <div>
+            <label>Notification ID</label>
+            <input id="f-id" type="text" placeholder="auto-generated if blank (e.g. notif_001)" />
+          </div>
+
+          <div>
+            <label>Title *</label>
+            <input id="f-title" type="text" placeholder="Short headline shown in popup & inbox" required />
+          </div>
+
+          <div>
+            <label>Message</label>
+            <textarea id="f-message" placeholder="Detailed body text (optional but recommended)"></textarea>
+          </div>
+
+          <div class="row2">
+            <div>
+              <label>Type *</label>
+              <select id="f-type">
+                <option value="INFO">ℹ️ Info</option>
+                <option value="SUCCESS">✅ Success</option>
+                <option value="WARNING">⚠️ Warning</option>
+                <option value="PROMO">🎁 Promo</option>
+                <option value="UPDATE">🔄 Update</option>
+                <option value="ALERT">🚨 Alert</option>
+              </select>
+            </div>
+            <div>
+              <label>Icon Emoji</label>
+              <input id="f-emoji" type="text" placeholder="🎉" maxlength="4" />
+            </div>
+          </div>
+
+          <div>
+            <label>Accent Color</label>
+            <div class="color-row">
+              <input id="f-color-picker" type="color" value="#6366f1" oninput="syncColorText(this.value)" />
+              <input id="f-color" type="text" value="#6366F1" placeholder="#6366F1" oninput="syncColorPicker(this.value)" />
+            </div>
+          </div>
+
+          <div>
+            <label>Action URL <span style="font-weight:400;text-transform:none">(enables action button in popup)</span></label>
+            <input id="f-action-url" type="text" placeholder="https://example.com" />
+          </div>
+
+          <div>
+            <label>Action Button Label</label>
+            <input id="f-action-text" type="text" placeholder="Open" />
+          </div>
+
+          <div class="toggles">
+            <div class="toggle-row">
+              <div>
+                <div class="tl">Show as Popup 🔔</div>
+                <div class="ts">Pops up on app open — once per device</div>
+              </div>
+              <label class="switch"><input id="f-popup" type="checkbox" checked /><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="tl">Dismissible</div>
+                <div class="ts">Allow closing via back press / tap outside</div>
+              </div>
+              <label class="switch"><input id="f-dismissible" type="checkbox" checked /><span class="slider"></span></label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="tl">Active ✓</div>
+                <div class="ts">Visible to all users immediately</div>
+              </div>
+              <label class="switch"><input id="f-active" type="checkbox" checked /><span class="slider"></span></label>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button type="submit" class="btn btn-primary" id="send-btn">🚀 Send Notification</button>
+            <button type="button" class="btn btn-outline" onclick="resetForm()">↺ Reset</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT COLUMN ── -->
+  <div style="display:flex;flex-direction:column;gap:22px;">
+
+    <!-- Live list -->
+    <div class="panel">
+      <div class="panel-header">
+        📬 Live Notifications
+        <button class="btn btn-outline" style="margin-left:auto;padding:4px 10px;font-size:11px;" onclick="loadNotifications()">↻ Refresh</button>
+      </div>
+      <div class="panel-body">
+        <div id="notif-list" class="notif-list">
+          <div class="empty-state">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rules helper -->
+    <div class="panel">
+      <div class="panel-header">🔐 Required: Firebase Rules Fix</div>
+      <div class="panel-body">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">
+          Go to <strong>Firebase Console → Realtime Database → Rules</strong> and set
+          the <code>/notifications</code> write rule to <code>true</code>:
+        </p>
+        <pre>"notifications": {
+  ".read": true,
+  ".write": true
+}</pre>
+        <div class="note warn" style="margin-top:12px;">
+          ⚠️ Change it back to <code>"auth != null"</code> after you're done publishing.
+        </div>
+
+        <p style="font-size:13px;font-weight:700;margin: 16px 0 8px;">Why users aren't seeing your notification</p>
+        <ul style="font-size:12px;color:var(--text-muted);line-height:2;padding-left:16px;">
+          <li>❌ <strong>Write failed silently</strong> due to Firebase rules (most common)</li>
+          <li>❌ <code>active</code> field is <strong>false</strong> or missing from the node</li>
+          <li>❌ <code>title</code> field is blank or missing</li>
+          <li>❌ <code>showPopup: false</code> → shows in inbox only, NOT as popup</li>
+          <li>❌ User already dismissed this notification ID (stored per-device)</li>
+          <li>❌ Notification ID was reused — previous dismissal blocks it</li>
+          <li>❌ App needs to be reopened after you publish (real-time listener picks it up)</li>
+        </ul>
+
+        <p style="font-size:13px;font-weight:700;margin: 16px 0 8px;">Required fields checklist</p>
+        <pre style="font-size:11px;">{
+  "id":         "notif_001",   ← must match node key
+  "title":      "Hello!",      ← required, not blank
+  "active":     true,          ← required, set to true
+  "timestamp":  1725000000000  ← Unix ms for sort order
+}</pre>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  const TYPE_COLORS = {
+    INFO:'#3B82F6', SUCCESS:'#10B981', WARNING:'#F59E0B',
+    PROMO:'#8B5CF6', UPDATE:'#0EA5E9', ALERT:'#EF4444'
+  };
+
+  const PRESETS = [
+    { name:'Welcome', emoji:'🎉', type:'INFO', color:'#6366F1',
+      title:'Welcome to Expense Tracker!',
+      message:'Track expenses, manage Dhaar debts & shop credit, and sync everything in real-time.',
+      actionUrl:'https://github.com/rajuX75/expensec', actionText:'Learn More',
+      popup:true, dismissible:true },
+
+    { name:'New Feature', emoji:'🚀', type:'UPDATE', color:'#0EA5E9',
+      title:'New Feature Available!',
+      message:"Check out what's new in this update. Tap to see the full changelog.",
+      actionUrl:'https://github.com/rajuX75/expensec/releases', actionText:"See What's New",
+      popup:true, dismissible:true },
+
+    { name:'Promo / Offer', emoji:'🛍️', type:'PROMO', color:'#8B5CF6',
+      title:'Special Offer 🎁',
+      message:'Limited time — tap to claim your reward.',
+      actionUrl:'', actionText:'Claim Now',
+      popup:true, dismissible:true },
+
+    { name:'Maintenance Alert', emoji:'⚠️', type:'ALERT', color:'#EF4444',
+      title:'Scheduled Maintenance',
+      message:'The app will be in maintenance mode from 2–4 AM UTC. Some features may be unavailable.',
+      actionUrl:'', actionText:'View Status',
+      popup:true, dismissible:false },
+
+    { name:'Pro Tip', emoji:'💡', type:'SUCCESS', color:'#10B981',
+      title:'Pro Tip 💡',
+      message:'Did you know you can export all your transactions to CSV? Try it in Settings → Export Data.',
+      actionUrl:'', actionText:'',
+      popup:false, dismissible:true },
+
+    { name:'Update Available', emoji:'📦', type:'UPDATE', color:'#0EA5E9',
+      title:'App Update Available',
+      message:'A new version is ready. Update now for the latest features and bug fixes.',
+      actionUrl:'https://github.com/rajuX75/expensec/releases/latest', actionText:'Update Now',
+      popup:true, dismissible:true },
+  ];
+
+  // ─── Presets ──────────────────────────────────────────────────────────────
+  function renderPresets() {
+    document.getElementById('presets-list').innerHTML = PRESETS.map((p, i) => `
+      <div class="preset-card" onclick="applyPreset(${i})">
+        <div class="preset-emoji">${p.emoji}</div>
+        <div class="preset-info">
+          <div class="name">${p.name}</div>
+          <div class="desc">${p.title}</div>
+          <div class="badges">
+            <span class="badge" style="background:${TYPE_COLORS[p.type]}22;color:${TYPE_COLORS[p.type]}">${p.type}</span>
+            ${p.popup ? '<span class="badge" style="background:#6366f122;color:#818cf8">POPUP</span>' : '<span class="badge" style="background:#33335522;color:#8888aa">INBOX ONLY</span>'}
+            ${!p.dismissible ? '<span class="badge" style="background:#ef444422;color:#ef4444">NON-DISMISSIBLE</span>' : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function applyPreset(i) {
+    const p = PRESETS[i];
+    set('f-id', '');
+    set('f-title', p.title);
+    set('f-message', p.message);
+    setV('f-type', p.type);
+    set('f-emoji', p.emoji);
+    set('f-color', p.color);
+    document.getElementById('f-color-picker').value = p.color;
+    set('f-action-url', p.actionUrl);
+    set('f-action-text', p.actionText);
+    check('f-popup', p.popup);
+    check('f-dismissible', p.dismissible);
+    check('f-active', true);
+    showToast(`Preset "${p.name}" loaded`, 'success');
+  }
+
+  function set(id, v) { document.getElementById(id).value = v; }
+  function setV(id, v) { document.getElementById(id).value = v; }
+  function check(id, v) { document.getElementById(id).checked = v; }
+
+  // ─── Color helpers ────────────────────────────────────────────────────────
+  function syncColorText(v) { set('f-color', v); }
+  function syncColorPicker(v) { if (/^#[0-9A-Fa-f]{6}$/.test(v)) document.getElementById('f-color-picker').value = v; }
+
+  // ─── Firebase REST API ────────────────────────────────────────────────────
+  const dbUrl   = () => document.getElementById('cfg-db-url').value.replace(/\/$/, '');
+  const token   = () => document.getElementById('cfg-token').value.trim();
+  const auth    = () => token() ? `?auth=${encodeURIComponent(token())}` : '';
+
+  async function testConnection() {
+    setStatus('loading', 'Testing connection…');
+    try {
+      const r = await fetch(`${dbUrl()}/notifications.json${auth()}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status} — ${await r.text()}`);
+      const d = await r.json();
+      const n = d ? Object.keys(d).length : 0;
+      setStatus('ok', `Connected ✓  —  ${n} notification(s) in database`);
+      showToast('Connection OK!', 'success');
+    } catch(e) {
+      setStatus('err', 'Connection failed: ' + e.message);
+      showToast('Connection failed: ' + e.message, 'error');
+    }
+  }
+
+  async function loadNotifications() {
+    try {
+      const r = await fetch(`${dbUrl()}/notifications.json${auth()}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      renderList(d);
+      if (d) setStatus('ok', `Connected ✓  —  ${Object.keys(d).length} notification(s)`);
+      else setStatus('ok', 'Connected ✓  —  0 notifications');
+    } catch(e) {
+      setStatus('err', 'Load failed: ' + e.message);
+      document.getElementById('notif-list').innerHTML =
+        `<div class="empty-state" style="color:var(--error)">Error: ${e.message}</div>`;
+    }
+  }
+
+  function renderList(data) {
+    const c = document.getElementById('notif-list');
+    if (!data || Object.keys(data).length === 0) {
+      c.innerHTML = '<div class="empty-state">No notifications in database yet</div>';
+      return;
+    }
+    const sorted = Object.entries(data).sort((a,b) => (b[1].timestamp||0)-(a[1].timestamp||0));
+    c.innerHTML = sorted.map(([key, n]) => {
+      const col = TYPE_COLORS[n.type] || '#6366f1';
+      const dim = n.active === false ? 'opacity:.45' : '';
+      return `
+        <div class="notif-item" style="${dim}">
+          <div class="ni-emoji">${n.iconEmoji || '🔔'}</div>
+          <div class="ni-body">
+            <div class="ni-title" title="${n.id||key}">${n.title||'(no title)'}</div>
+            <div class="ni-meta">
+              <span class="badge" style="background:${col}22;color:${col}">${n.type||'INFO'}</span>
+              ${n.showPopup ? '<span class="badge" style="background:#6366f122;color:#818cf8;margin-left:3px">POPUP</span>' : ''}
+              ${n.active===false ? '<span class="badge" style="background:#33333322;color:#777;margin-left:3px">INACTIVE</span>' : ''}
+              <span style="margin-left:4px">${n.id||key}</span>
+            </div>
+          </div>
+          <div class="ni-actions">
+            <button class="ni-btn" title="${n.active!==false?'Deactivate':'Activate'}"
+              onclick="toggleActive('${key}',${n.active===false})">${n.active!==false?'⏸':'▶'}</button>
+            <button class="ni-btn del" title="Delete" onclick="deleteNotif('${key}')">🗑</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function sendNotification(e) {
+    e.preventDefault();
+    const id = document.getElementById('f-id').value.trim() || 'notif_' + Date.now();
+
+    const raw = {
+      id,
+      title:          document.getElementById('f-title').value.trim(),
+      message:        document.getElementById('f-message').value.trim(),
+      type:           document.getElementById('f-type').value,
+      timestamp:      Date.now(),
+      iconEmoji:      document.getElementById('f-emoji').value.trim() || null,
+      accentColorHex: document.getElementById('f-color').value.trim() || null,
+      actionUrl:      document.getElementById('f-action-url').value.trim() || null,
+      actionText:     document.getElementById('f-action-text').value.trim() || null,
+      showPopup:      document.getElementById('f-popup').checked,
+      dismissible:    document.getElementById('f-dismissible').checked,
+      active:         document.getElementById('f-active').checked,
+    };
+
+    // Strip nulls so Firebase doesn't store them
+    const payload = Object.fromEntries(Object.entries(raw).filter(([,v]) => v !== null));
+
+    const btn = document.getElementById('send-btn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+
+    try {
+      const r = await fetch(
+        `${dbUrl()}/notifications/${encodeURIComponent(id)}.json${auth()}`,
+        { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) }
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`);
+      showToast(`✅ "${id}" sent!`, 'success');
+      resetForm();
+      await loadNotifications();
+    } catch(err) {
+      showToast('❌ Failed: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = '🚀 Send Notification';
+    }
+  }
+
+  async function toggleActive(key, newState) {
+    try {
+      const r = await fetch(
+        `${dbUrl()}/notifications/${encodeURIComponent(key)}/active.json${auth()}`,
+        { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(newState) }
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      showToast(newState ? 'Activated ✓' : 'Deactivated', 'success');
+      await loadNotifications();
+    } catch(e) { showToast('Failed: ' + e.message, 'error'); }
+  }
+
+  async function deleteNotif(key) {
+    if (!confirm(`Delete notification "${key}"?`)) return;
+    try {
+      const r = await fetch(
+        `${dbUrl()}/notifications/${encodeURIComponent(key)}.json${auth()}`,
+        { method:'DELETE' }
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      showToast(`Deleted "${key}"`, 'success');
+      await loadNotifications();
+    } catch(e) { showToast('Failed: ' + e.message, 'error'); }
+  }
+
+  // ─── UI ──────────────────────────────────────────────────────────────────
+  function resetForm() {
+    document.getElementById('notif-form').reset();
+    set('f-color', '#6366F1');
+    document.getElementById('f-color-picker').value = '#6366f1';
+    check('f-popup', true); check('f-dismissible', true); check('f-active', true);
+  }
+
+  function setStatus(state, text) {
+    document.getElementById('status-dot').className = 'dot ' + state;
+    document.getElementById('status-text').textContent = text;
+  }
+
+  let _t;
+  function showToast(msg, type='success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'show ' + type;
+    clearTimeout(_t); _t = setTimeout(() => { t.className = ''; }, 3400);
+  }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
+  renderPresets();
+  testConnection().then(() => loadNotifications());
+</script>
+</body>
+</html>
