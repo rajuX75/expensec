@@ -38,6 +38,20 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Deep links into Navigation 3 routes: expensex://open/transactions,
+                 expensex://open/contact/5, expensex://open/shop/3, etc.
+                 Parsed in MainActivity and pushed onto the NavBackStack. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="expensex"
+                    android:host="open" />
+            </intent-filter>
         </activity>
 
         <provider

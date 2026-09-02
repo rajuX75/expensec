@@ -76,7 +76,7 @@ object CrashLogCapture {
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
         pw.println("=== Crash Report ===")
         pw.println("Time     : $timestamp")
-        pw.println("Thread   : ${thread.name} (id=${thread.id})")
+        pw.println("Thread   : ${thread.name} (id=${thread.threadId()})")
         pw.println("Android  : ${android.os.Build.VERSION.RELEASE} (SDK ${android.os.Build.VERSION.SDK_INT})")
         pw.println("Device   : ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
         pw.println()

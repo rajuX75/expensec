@@ -277,7 +277,7 @@ class UpdateRepository(
         _downloadState.value = UpdateDownloadState.Downloading(0.0f)
         try {
             val targetDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.cacheDir
-            val apkFile = File(targetDir, "expense-tracker-${updateInfo.versionName}.apk")
+            val apkFile = File(targetDir, "expense-tracker-" + updateInfo.versionName + ".apk")
             if (apkFile.exists()) {
                 apkFile.delete()
             }

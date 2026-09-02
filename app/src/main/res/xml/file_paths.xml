@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    SECURITY HARDENING (Skill #1 android-intent-security):
+    Previously `<external-path path="."/>` exposed the ENTIRE shared external
+    storage through this FileProvider — any granted URI could traverse into
+    other apps' public files. Replaced with `<external-files-path>` scoped to
+    the app-private Download directory (the only external location the app
+    serves: downloaded update APKs in UpdateRepository).
+-->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="external_files" path="." />
+    <external-files-path name="update_apks" path="Download/" />
     <external-cache-path name="external_cache" path="." />
     <cache-path name="cache" path="." />
     <files-path name="files" path="." />

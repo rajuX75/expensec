@@ -69,6 +69,10 @@ class GoogleAuthManager(
 
     private val credentialManager = CredentialManager.create(context)
 
+    // Skill #5 (restore-credentials): issues / clears restore keys tied to the
+    // Firebase account so a new device can silently recognize a returning user.
+    private val restoreCredentialManager = RestoreCredentialManager(context)
+
     // BUG FIX #7: FirebaseAuth.getInstance() throws when Firebase is not initialised
     // (missing/invalid google-services.json, or right after an app update). Keep the
     // reference nullable + lazy so constructing this manager can never crash the app,
@@ -150,6 +154,7 @@ class GoogleAuthManager(
      * Launch the returned intent via [ActivityResultLauncher] and process the
      * result with [handleLegacySignInResult].
      */
+    @Suppress("DEPRECATION")
     fun getLegacySignInIntent(context: Context): android.content.Intent {
         val gso = com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder(
             com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN
@@ -165,6 +170,7 @@ class GoogleAuthManager(
      * Processes the [android.content.Intent] returned by the legacy GoogleSignIn flow,
      * extracts the ID token, and completes Firebase sign-in.
      */
+    @Suppress("DEPRECATION")
     suspend fun handleLegacySignInResult(data: android.content.Intent?): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -183,6 +189,8 @@ class GoogleAuthManager(
                 Log.d(TAG, "Legacy Firebase sign-in successful: ${authResult.user?.uid}")
                 val email = authResult.user?.email ?: account.email ?: ""
                 userPreferencesRepository.setGoogleAccount(email.ifBlank { null }, null)
+                // Skill #5: restore key for the legacy sign-in path too.
+                authResult.user?.uid?.let { restoreCredentialManager.createRestoreKey(it) }
                 email
             }.recoverCatching { t ->
                 Log.e(TAG, "Legacy sign-in result handling failed", t)
@@ -209,6 +217,9 @@ class GoogleAuthManager(
                     ?: decodeEmailFromIdToken(idToken)
                     ?: ""
                 userPreferencesRepository.setGoogleAccount(email.ifBlank { null }, null)
+                // Skill #5: create a restore key after every successful sign-in so
+                // the account can be silently restored on a new / restored device.
+                authResult.user?.uid?.let { restoreCredentialManager.createRestoreKey(it) }
                 return email
             } catch (t: Throwable) {
                 lastFailure = t
@@ -306,7 +317,10 @@ class GoogleAuthManager(
     suspend fun signOut(): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             try {
-                credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                // Skill #5: clear the restore key on explicit sign-out (also clears
+                // the Credential Manager state) so the next device does not
+                // silently resurrect a deliberately signed-out account.
+                restoreCredentialManager.clearRestoreKey()
             } catch (_: Exception) {
             }
             try {

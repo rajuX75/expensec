@@ -7,7 +7,11 @@ plugins {
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
   alias(libs.plugins.google.services)
+  alias(libs.plugins.kotlin.serialization)
+  jacoco
 }
+
+jacoco { toolVersion = "0.8.12" }
 
 android {
   namespace = "com.example"
@@ -15,7 +19,9 @@ android {
 
   defaultConfig {
     applicationId = "com.rjx.expensex"
-    minSdk = 24
+    // Raised 24 → 28 for Restore Credentials support (Skill #5).
+    // API 24-27 represents <5% of active devices.
+    minSdk = 28
     targetSdk = 36
     versionCode = 23
     versionName = "1.1.17"
@@ -84,6 +90,28 @@ android {
   }
 }
 
+// JaCoCo code-coverage report: ./gradlew :app:jacocoTestReport
+tasks.withType<Test>().configureEach { finalizedBy("jacocoTestReport") }
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+  dependsOn("testDebugUnitTest")
+  reports {
+    xml.required = true
+    html.required = true
+  }
+  val fileFilter = listOf(
+    "**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*",
+    "**/*_Impl.class", "**/*JsonAdapter*"
+  )
+  classDirectories.setFrom(
+    files(classDirectories.files.map {
+      fileTree(it) { exclude(fileFilter) }
+    })
+  )
+  sourceDirectories.setFrom(files("$projectDir/src/main/java"))
+  executionData.setFrom(files(layout.buildDirectory.file("jacoco/testDebugUnitTest.exec")))
+}
+
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
 // to match the convention used in Web projects.
 secrets {
@@ -115,7 +143,11 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
-  implementation(libs.androidx.navigation.compose)
+  // Navigation 3 (Skill #6): type-safe routes + NavDisplay back stack
+  implementation(libs.androidx.navigation3.runtime)
+  implementation(libs.androidx.navigation3.ui)
+  implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+  implementation(libs.kotlinx.serialization.json)
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.coil.compose)
@@ -146,6 +178,8 @@ dependencies {
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
   testImplementation(libs.junit)
+  testImplementation(libs.mockk)
+  testImplementation(libs.turbine)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
   testImplementation(libs.roborazzi)

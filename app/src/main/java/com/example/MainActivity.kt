@@ -7,12 +7,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.data.cloud.RestoreCredentialManager
 import com.example.ui.components.PinLockScreen
 import com.example.ui.navigation.ExpenseAppMain
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.ExpenseViewModel
 import com.example.utils.CrashLogCapture
+import kotlinx.coroutines.launch
 
 
 /**
@@ -21,12 +24,17 @@ import com.example.utils.CrashLogCapture
  * Navigation and screen routing have been extracted to [com.example.ui.navigation.AppNavigation].
  */
 class MainActivity : ComponentActivity() {
+
+    // Skill #5 (restore-credentials): Tier 2 silent-restore check on launch.
+    private val restoreCredentialManager by lazy { RestoreCredentialManager(this) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install crash capture before anything else so all subsequent uncaught
         // exceptions are written to disk and available for the next feedback report.
         CrashLogCapture.install(this)
         super.onCreate(savedInstanceState)
         handleAppUpgrade()
+        attemptSilentRestore()
         enableEdgeToEdge()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
@@ -54,8 +62,26 @@ class MainActivity : ComponentActivity() {
                         onUnlocked = { viewModel.unlockApp() }
                     )
                 } else {
-                    ExpenseAppMain(viewModel = viewModel)
+                    ExpenseAppMain(viewModel = viewModel, deepLink = intent?.data)
                 }
+            }
+        }
+    }
+
+    /**
+     * Skill #5, Tier 2 restore fallback: on a fresh install or a device restored
+     * from backup, ask Credential Manager for the restore key before any sign-in
+     * UI is shown. A returning user is recognized silently; a genuinely new
+     * device simply has no credential and this no-ops.
+     */
+    private fun attemptSilentRestore() {
+        lifecycleScope.launch {
+            val restoredUid = restoreCredentialManager.fetchRestoreKey().getOrNull()
+            if (restoredUid != null) {
+                android.util.Log.i(
+                    "MainActivity",
+                    "Restore credential recognized returning account: $restoredUid"
+                )
             }
         }
     }

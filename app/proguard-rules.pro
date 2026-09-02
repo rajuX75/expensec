@@ -1,47 +1,49 @@
-# Add project specific ProGuard rules here.
+# ─────────────────────────────────────────────────────────────────────────────
+# ExpenseX ProGuard / R8 rules (optimized — see docs/CHANGES.md, Skill #4 r8-analyzer)
+#
+# Guideline: libraries ship their own consumer ProGuard rules (Firebase BOM,
+# Play Services, OkHttp, Retrofit, Room, Credential Manager). We only keep what
+# R8 cannot infer from the app's own bytecode: reflection targets and
+# serialization models.
+# ─────────────────────────────────────────────────────────────────────────────
 
-# --- Room / SQLite ---
--keepclassmembers class * extends androidx.room.RoomDatabase { <init>(...); }
--dontwarn androidx.room.**
-
-# --- Moshi (used by KSP codegen; keep generated adapters & models) ---
+# --- App data models (Moshi codegen + Firestore POJO reflection) ---
+# Firestore deserializes these via reflection; Moshi adapters are KSP-generated.
 -keep class com.example.data.model.** { *; }
+-keepclassmembers class com.example.data.model.** { *; }
+-keep @com.squareup.moshi.JsonClass class * { *; }
 -keepclasseswithmembers class * {
     @com.squareup.moshi.* <methods>;
 }
--keep @com.squareup.moshi.JsonClass class * { *; }
 
-# --- Firebase / Play Services ---
--keep class com.google.firebase.** { *; }
--keep class com.google.android.gms.** { *; }
--dontwarn com.google.firebase.**
--dontwarn com.google.android.gms.**
+# --- Room ---
+# Room's generated implementation classes are referenced reflectively by name.
+-keepclassmembers class * extends androidx.room.RoomDatabase { <init>(...); }
+# (Room ships consumer rules — no -dontwarn needed here anymore.)
 
-# --- OkHttp / Retrofit ---
--dontwarn okhttp3.**
--dontwarn retrofit2.**
+# --- Retrofit ---
+# Only annotated service interface methods need keeping; Retrofit ships the rest.
 -keepclasseswithmembers class * {
     @retrofit2.http.* <methods>;
 }
 
-# Preserve line numbers for crash reports
+# --- Kotlinx Serialization (Navigation 3 routes are @Serializable) ---
+-keepclasseswithmembers class com.example.ui.navigation.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keepclassmembers class com.example.ui.navigation.** {
+    *** INSTANCE;
+}
+-keepattributes *Annotation*, InnerClasses, Signature, EnclosingMethod, Exceptions
+
+# ── REMOVED (previously over-broad / redundant) ──────────────────────────────
+#  -keep class com.google.firebase.** { *; }        → Firebase BOM consumer rules
+#  -keep class com.google.android.gms.** { *; }     → Play Services consumer rules
+#  -dontwarn com.google.firebase.**, com.google.android.gms.**,
+#    okhttp3.**, retrofit2.**, androidx.room.**     → covered by library rules
+#  duplicate SourceFile/LineNumberTable blocks      → consolidated below
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Preserve line numbers once, for crash stack traces
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
-
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
-
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile

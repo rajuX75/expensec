@@ -37,7 +37,6 @@ fun LegalDocsDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
     var selectedDoc by remember { mutableStateOf(initialDoc) }
     val content = remember(selectedDoc) { LegalDocs.getDocumentContent(selectedDoc) }
 
@@ -206,7 +205,8 @@ fun LegalDocsDialog(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            clipboardManager.setText(AnnotatedString(content))
+                            val androidClipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            androidClipboard.setPrimaryClip(android.content.ClipData.newPlainText(selectedDoc.title, content))
                             Toast.makeText(context, "${selectedDoc.title} copied to clipboard", Toast.LENGTH_SHORT).show()
                         },
                         shape = RoundedCornerShape(12.dp),
