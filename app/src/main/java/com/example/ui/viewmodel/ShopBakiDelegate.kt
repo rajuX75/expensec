@@ -149,7 +149,7 @@ class ShopBakiDelegate(
                 ?: categories.firstOrNull { it.type == "EXPENSE" }
             val account = expenseRepository.allAccounts.firstOrNull()?.firstOrNull()
             val tx = TransactionEntity(
-                type = "EXPENSE",
+                type = com.example.data.model.TransactionType.EXPENSE,
                 amount = entry.amount,
                 categoryId = cat?.id ?: 0,
                 categoryName = cat?.name ?: "Shopping",

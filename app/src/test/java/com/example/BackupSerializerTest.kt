@@ -23,7 +23,7 @@ class BackupSerializerTest {
                 uuid = "acc-uuid-1",
                 name = "Checking",
                 type = "BANK",
-                balance = 2500.0,
+                openingBalance = 2500.0,
                 currency = "USD",
                 colorHex = "#4CAF50",
                 iconName = "account_balance"
@@ -44,7 +44,7 @@ class BackupSerializerTest {
             TransactionEntity(
                 id = 1,
                 uuid = "tx-uuid-1",
-                type = "EXPENSE",
+                type = com.example.data.model.TransactionType.EXPENSE,
                 amount = 85.50,
                 currency = "USD",
                 categoryId = 1,
@@ -62,7 +62,7 @@ class BackupSerializerTest {
             TransactionEntity(
                 id = 2,
                 uuid = "tx-uuid-2",
-                type = "INCOME",
+                type = com.example.data.model.TransactionType.INCOME,
                 amount = 4500.0,
                 currency = "USD",
                 categoryId = 2,

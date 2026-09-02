@@ -116,6 +116,7 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel) {
     } else if (showShopBakiScreen) {
         com.example.ui.screens.shopbaki.ShopBakiDashboardScreen(
             viewModel = viewModel,
+            onNavigateBack = { showShopBakiScreen = false },
             onNavigateToShopDetail = { shopId ->
                 selectedShopIdForDetail = shopId
             }

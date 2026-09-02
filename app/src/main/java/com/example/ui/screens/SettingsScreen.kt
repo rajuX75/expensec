@@ -4,6 +4,8 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -109,6 +111,7 @@ fun SettingsScreen(
         contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
     ) {
 
+        // region 1. Profile
         // ── 1. Hero Profile Banner Card ───────────────────────────
         item {
             Card(
@@ -224,6 +227,9 @@ fun SettingsScreen(
             }
         }
 
+        // endregion
+
+        // region 2. Firebase Database
         // ── 2. Firebase Database & Cloud Sync ─────────────────────
         item {
             SettingsSectionHeader(title = "Cloud & Database Sync")
@@ -235,6 +241,9 @@ fun SettingsScreen(
             )
         }
 
+        // endregion
+
+        // region 3. General Preferences
         // ── 3. General Preferences ────────────────────────────────
         item {
             SettingsSectionHeader(title = "General Preferences")
@@ -293,6 +302,9 @@ fun SettingsScreen(
             }
         }
 
+        // endregion
+
+        // region 4. Display & Formatting
         // ── 4. Display & Formatting ───────────────────────────────
         item {
             SettingsSectionHeader(title = "Display & Formatting")
@@ -752,7 +764,13 @@ fun SettingsScreen(
             }
         }
 
-        // App Info footer
+        // endregion
+
+        // region App Info Footer
+        // endregion
+
+        // region App Info Footer
+        // App Info Footer
         item {
             Column(
                 modifier = Modifier
@@ -806,7 +824,14 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .imePadding()
+                        .verticalScroll(rememberScrollState())
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text("Set Security PIN", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
                     Spacer(Modifier.height(6.dp))
                     Text("Enter a 4-digit PIN code to secure access", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -930,3 +955,5 @@ fun SettingsScreen(
 }
 
 // SettingsSectionHeader, SettingsSwitchItem, SettingsItem are defined in SettingsComponents.kt
+
+// endregion

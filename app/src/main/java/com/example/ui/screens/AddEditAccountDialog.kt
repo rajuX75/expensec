@@ -3,6 +3,8 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -37,7 +39,7 @@ fun AddEditAccountDialog(
     var name by remember { mutableStateOf(initialAccount?.name ?: "") }
     var accountType by remember { mutableStateOf(initialAccount?.type ?: "BANK") }
     var initialBalanceText by remember {
-        mutableStateOf(initialAccount?.let { String.format(Locale.US, "%.2f", it.balance) } ?: "0.00")
+        mutableStateOf(initialAccount?.let { String.format(Locale.US, "%.2f", it.openingBalance) } ?: "0.00")
     }
     var selectedColor by remember {
         mutableStateOf(initialAccount?.colorHex ?: "#00875A")
@@ -65,6 +67,8 @@ fun AddEditAccountDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp)
             ) {
                 Row(
@@ -217,7 +221,7 @@ fun AddEditAccountDialog(
                                 uuid = initialAccount?.uuid ?: UUID.randomUUID().toString(),
                                 name = name.trim(),
                                 type = accountType,
-                                balance = bal,
+                                openingBalance = bal,
                                 currency = viewModel.currency.value,
                                 colorHex = selectedColor,
                                 iconName = selectedIcon

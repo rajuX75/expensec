@@ -253,8 +253,8 @@ fun TransactionsScreen(
                 ) {
                     groupedTransactions.forEach { (dateKey, txList) ->
                         // Calculate daily total
-                        val dailyExpense = txList.filter { it.type.equals("EXPENSE", ignoreCase = true) }.sumOf { it.amount }
-                        val dailyIncome = txList.filter { it.type.equals("INCOME", ignoreCase = true) }.sumOf { it.amount }
+                        val dailyExpense = txList.filter { it.type == com.example.data.model.TransactionType.EXPENSE }.sumOf { it.amount }
+                        val dailyIncome = txList.filter { it.type == com.example.data.model.TransactionType.INCOME }.sumOf { it.amount }
 
                         val headerTitle = when (dateKey) {
                             todayStr -> "Today"
@@ -311,8 +311,8 @@ fun TransactionsScreen(
     if (selectedDetailTx != null) {
         val tx = selectedDetailTx!!
         val dateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy 'at' h:mm a", Locale.getDefault())
-        val isIncome = tx.type.equals("INCOME", ignoreCase = true)
-        val isTransfer = tx.type.equals("TRANSFER", ignoreCase = true)
+        val isIncome = tx.type == com.example.data.model.TransactionType.INCOME
+        val isTransfer = tx.type == com.example.data.model.TransactionType.TRANSFER
 
         ModalBottomSheet(
             onDismissRequest = { selectedDetailTx = null },
@@ -346,7 +346,7 @@ fun TransactionsScreen(
                         }
                     ) {
                         Text(
-                            text = tx.type,
+                            text = tx.type.name,
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = when {
                                 isIncome -> IncomeGreen
@@ -613,3 +613,4 @@ fun DetailRow(label: String, value: String) {
         )
     }
 }
+

@@ -37,8 +37,8 @@ fun TransactionItemCard(
     val dateFormat = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
     val formattedDate = dateFormat.format(Date(transaction.date))
 
-    val isIncome = transaction.type.equals("INCOME", ignoreCase = true)
-    val isTransfer = transaction.type.equals("TRANSFER", ignoreCase = true)
+    val isIncome = transaction.type == com.example.data.model.TransactionType.INCOME
+    val isTransfer = transaction.type == com.example.data.model.TransactionType.TRANSFER
 
     val amountColor = when {
         isIncome -> IncomeGreen
@@ -208,3 +208,4 @@ fun TransactionItemCard(
         }
     }
 }
+

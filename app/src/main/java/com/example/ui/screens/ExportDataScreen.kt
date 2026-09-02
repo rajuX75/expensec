@@ -134,9 +134,14 @@ fun ExportDataScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .consumeWindowInsets(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(
+                    start = 16.dp,
+                    top = padding.calculateTopPadding() + 16.dp,
+                    end = 16.dp,
+                    bottom = padding.calculateBottomPadding() + 16.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Data Summary Card

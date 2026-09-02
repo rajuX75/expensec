@@ -110,8 +110,13 @@ fun NotificationsScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    .consumeWindowInsets(innerPadding),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = innerPadding.calculateTopPadding() + 12.dp,
+                    end = 16.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 12.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(notifications, key = { it.id }) { notification ->

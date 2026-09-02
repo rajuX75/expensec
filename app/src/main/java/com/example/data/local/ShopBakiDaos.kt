@@ -34,6 +34,9 @@ interface ShopDao {
 
     @Query("DELETE FROM shops WHERE uuid = :uuid")
     suspend fun deleteShopByUuid(uuid: String)
+
+    @Query("DELETE FROM shops")
+    suspend fun deleteAllShops()
 }
 
 @Dao
@@ -61,6 +64,9 @@ interface ShopProductDao {
 
     @Query("DELETE FROM shop_products WHERE uuid = :uuid")
     suspend fun deleteProductByUuid(uuid: String)
+
+    @Query("DELETE FROM shop_products")
+    suspend fun deleteAllProducts()
 }
 
 @Dao
@@ -100,4 +106,7 @@ interface ShopLedgerEntryDao {
 
     @Query("DELETE FROM shop_ledger_entries WHERE uuid = :uuid")
     suspend fun deleteEntryByUuid(uuid: String)
+
+    @Query("DELETE FROM shop_ledger_entries")
+    suspend fun deleteAllLedgerEntries()
 }

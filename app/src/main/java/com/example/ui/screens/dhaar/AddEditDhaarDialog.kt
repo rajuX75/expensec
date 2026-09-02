@@ -162,6 +162,7 @@ fun AddEditDhaarDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)

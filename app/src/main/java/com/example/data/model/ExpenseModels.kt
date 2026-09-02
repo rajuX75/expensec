@@ -34,7 +34,7 @@ enum class BillFrequency {
 data class TransactionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val uuid: String = UUID.randomUUID().toString(),
-    val type: String, // EXPENSE, INCOME, TRANSFER
+    val type: TransactionType, // EXPENSE, INCOME, TRANSFER
     val amount: Double,
     val currency: String = "USD",
     val categoryId: Long = 0,
@@ -72,7 +72,12 @@ data class AccountEntity(
     val uuid: String = UUID.randomUUID().toString(),
     val name: String,
     val type: String, // BANK, CASH, CREDIT, SAVINGS, WALLET
-    val balance: Double = 0.0,
+    /** 
+     * This represents the *opening* or initial balance of the account. 
+     * The true current balance is computed dynamically as: openingBalance + sum(incomes) - sum(expenses). 
+     */
+    @androidx.room.ColumnInfo(name = "balance")
+    val openingBalance: Double = 0.0,
     val currency: String = "USD",
     val colorHex: String = "#00875A",
     val iconName: String = "account_balance"

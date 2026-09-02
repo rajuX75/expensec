@@ -58,6 +58,7 @@ fun PinLockScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .safeDrawingPadding()
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {

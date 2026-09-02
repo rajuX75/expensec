@@ -88,7 +88,6 @@ object CloudinaryUploader {
 
         val apiSecret = when {
             prefSecret.isNotBlank() -> prefSecret
-            BuildConfig.ENV_CLOUDINARY_API_SECRET.isNotBlank() && BuildConfig.ENV_CLOUDINARY_API_SECRET != "your_api_secret" -> BuildConfig.ENV_CLOUDINARY_API_SECRET
             BuildConfig.CLOUDINARY_API_SECRET.isNotBlank() && BuildConfig.CLOUDINARY_API_SECRET != "your_api_secret" -> BuildConfig.CLOUDINARY_API_SECRET
             else -> ""
         }

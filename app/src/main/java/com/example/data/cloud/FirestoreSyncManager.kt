@@ -34,13 +34,13 @@ class FirestoreSyncManager(
     }
     private val tag = "FirestoreSyncManager"
 
-    val transactionSyncer = FirestoreTransactionSyncer(firestore, database)
-    val categorySyncer = FirestoreCategorySyncer(firestore, database)
-    val accountSyncer = FirestoreAccountSyncer(firestore, database)
-    val budgetSyncer = FirestoreBudgetSyncer(firestore, database)
-    val billSyncer = FirestoreBillSyncer(firestore, database)
-    val dhaarSyncer = FirestoreDhaarSyncer(firestore, database)
-    val shopBakiSyncer = FirestoreShopBakiSyncer(firestore, database)
+    val transactionSyncer by lazy { FirestoreTransactionSyncer(firestore, database) }
+    val categorySyncer by lazy { FirestoreCategorySyncer(firestore, database) }
+    val accountSyncer by lazy { FirestoreAccountSyncer(firestore, database) }
+    val budgetSyncer by lazy { FirestoreBudgetSyncer(firestore, database) }
+    val billSyncer by lazy { FirestoreBillSyncer(firestore, database) }
+    val dhaarSyncer by lazy { FirestoreDhaarSyncer(firestore, database) }
+    val shopBakiSyncer by lazy { FirestoreShopBakiSyncer(firestore, database) }
 
     private val _syncState = MutableStateFlow(SyncState.IDLE)
     val syncState: StateFlow<SyncState> = _syncState.asStateFlow()

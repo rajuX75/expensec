@@ -70,9 +70,9 @@ class AnalyticsDelegate(
             val isCurrentMonth = txCal.get(Calendar.YEAR) == currentYear && txCal.get(Calendar.MONTH) == currentMonth
 
             if (isCurrentMonth) {
-                if (tx.type.equals("INCOME", ignoreCase = true)) {
+                if (tx.type == com.example.data.model.TransactionType.INCOME) {
                     totalIncomeMonth += tx.amount
-                } else if (tx.type.equals("EXPENSE", ignoreCase = true)) {
+                } else if (tx.type == com.example.data.model.TransactionType.EXPENSE) {
                     totalExpenseMonth += tx.amount
                 }
             }
@@ -98,23 +98,40 @@ class AnalyticsDelegate(
         allAccounts,
         allTransactions
     ) { accounts, transactions ->
-        accounts.map { acc ->
-            var bal = acc.balance
-            var count = 0
-            transactions.forEach { tx ->
-                if (tx.accountId == acc.id) {
-                    count++
-                    when (tx.type.uppercase()) {
-                        "INCOME" -> bal += tx.amount
-                        "EXPENSE" -> bal -= tx.amount
-                        "TRANSFER" -> bal -= tx.amount
+        // Pre-group transactions by account to avoid an O(n*m) nested scan.
+        // Bucket each transaction into all account IDs it affects so each account
+        // can be resolved in O(1) instead of a full list scan.
+        data class TxBucket(var income: Double = 0.0, var expense: Double = 0.0, var transfer: Double = 0.0, var count: Int = 0)
+        val buckets = mutableMapOf<Long, TxBucket>()
+
+        transactions.forEach { tx ->
+            val fromId = tx.accountId
+            val toId = tx.toAccountId
+            when (tx.type.name) {
+                "INCOME" -> {
+                    buckets.getOrPut(fromId) { TxBucket() }.also { it.income += tx.amount; it.count++ }
+                }
+                "EXPENSE" -> {
+                    buckets.getOrPut(fromId) { TxBucket() }.also { it.expense += tx.amount; it.count++ }
+                }
+                "TRANSFER" -> {
+                    buckets.getOrPut(fromId) { TxBucket() }.also { it.transfer += tx.amount; it.count++ }
+                    if (toId != null) {
+                        // Receiving side of a transfer is credited as income delta
+                        buckets.getOrPut(toId) { TxBucket() }.also { it.income += tx.amount; it.count++ }
                     }
-                } else if (tx.toAccountId == acc.id && tx.type.equals("TRANSFER", ignoreCase = true)) {
-                    count++
-                    bal += tx.amount
                 }
             }
-            AccountWithBalance(account = acc, liveBalance = bal, transactionCount = count)
+        }
+
+        accounts.map { acc ->
+            val bucket = buckets[acc.id]
+            val delta = if (bucket != null) {
+                bucket.income - bucket.expense - bucket.transfer
+            } else 0.0
+            val liveBalance = acc.openingBalance + delta
+            val count = bucket?.count ?: 0
+            AccountWithBalance(account = acc, liveBalance = liveBalance, transactionCount = count)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -133,7 +150,7 @@ class AnalyticsDelegate(
     ) { transactions, period, categories ->
         val now = Calendar.getInstance()
         val filtered = transactions.filter { tx ->
-            if (!tx.type.equals("EXPENSE", ignoreCase = true)) return@filter false
+            if (tx.type != com.example.data.model.TransactionType.EXPENSE) return@filter false
             val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
             when (period) {
                 "THIS_MONTH" -> txCal.get(Calendar.YEAR) == now.get(Calendar.YEAR) && txCal.get(Calendar.MONTH) == now.get(Calendar.MONTH)
@@ -176,7 +193,8 @@ class AnalyticsDelegate(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Monthly Trend Chart Data (Last 6 Months)
-    val monthlyTrendsData: StateFlow<List<BarChartEntry>> = allTransactions.map { transactions ->
+    val monthlyTrendsData: StateFlow<List<BarChartEntry>> = allTransactions
+        .map { transactions ->
         val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
         val entries = mutableListOf<BarChartEntry>()
 
@@ -194,9 +212,9 @@ class AnalyticsDelegate(
             transactions.forEach { tx ->
                 val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
                 if (txCal.get(Calendar.YEAR) == targetYear && txCal.get(Calendar.MONTH) == targetMonth) {
-                    if (tx.type.equals("EXPENSE", ignoreCase = true)) {
+                    if (tx.type == com.example.data.model.TransactionType.EXPENSE) {
                         expenseSum += tx.amount
-                    } else if (tx.type.equals("INCOME", ignoreCase = true)) {
+                    } else if (tx.type == com.example.data.model.TransactionType.INCOME) {
                         incomeSum += tx.amount
                     }
                 }
@@ -236,7 +254,7 @@ class AnalyticsDelegate(
             transactions.forEach { tx ->
                 val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
                 if (txCal.get(Calendar.YEAR) == targetYear && txCal.get(Calendar.MONTH) == targetMonth) {
-                    if (tx.type.equals("EXPENSE", ignoreCase = true)) {
+                    if (tx.type == com.example.data.model.TransactionType.EXPENSE) {
                         val catName = tx.categoryName.ifBlank { "Other" }
                         monthCategoryMap[catName] = (monthCategoryMap[catName] ?: 0.0) + tx.amount
                         categoryTotals[catName] = (categoryTotals[catName] ?: 0.0) + tx.amount
@@ -276,7 +294,7 @@ class AnalyticsDelegate(
 
     val topMerchants: StateFlow<List<MerchantSpending>> = allTransactions.map { transactions ->
         val merchantMap = mutableMapOf<String, Pair<Double, Int>>()
-        transactions.filter { it.type.equals("EXPENSE", ignoreCase = true) && it.merchant.isNotBlank() }
+        transactions.filter { it.type == com.example.data.model.TransactionType.EXPENSE && it.merchant.isNotBlank() }
             .forEach { tx ->
                 val current = merchantMap[tx.merchant] ?: Pair(0.0, 0)
                 merchantMap[tx.merchant] = Pair(current.first + tx.amount, current.second + 1)
@@ -296,7 +314,7 @@ class AnalyticsDelegate(
 
         budgets.map { budget ->
             val spent = transactions.filter { tx ->
-                if (!tx.type.equals("EXPENSE", ignoreCase = true)) return@filter false
+                if (tx.type != com.example.data.model.TransactionType.EXPENSE) return@filter false
                 val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
                 val isInPeriod = txCal.get(Calendar.YEAR) == currentYear && txCal.get(Calendar.MONTH) == currentMonth
 
@@ -327,60 +345,17 @@ class AnalyticsDelegate(
 
     // Auto-Categorization Helper from Merchant Name
     fun suggestCategoryForMerchant(merchant: String): CategoryEntity? {
-        val clean = merchant.trim().lowercase()
-        val categories = allCategories.value
-
-        return when {
-            clean.contains("food") || clean.contains("restaurant") || clean.contains("cafe") ||
-            clean.contains("starbucks") || clean.contains("mcdonald") || clean.contains("burger") ||
-            clean.contains("pizza") || clean.contains("ramen") || clean.contains("chipotle") -> {
-                categories.find { it.name.contains("Food", ignoreCase = true) }
-            }
-            clean.contains("grocery") || clean.contains("market") || clean.contains("walmart") ||
-            clean.contains("whole foods") || clean.contains("trader joe") || clean.contains("kroger") ||
-            clean.contains("target") || clean.contains("supermarket") -> {
-                categories.find { it.name.contains("Groceries", ignoreCase = true) }
-            }
-            clean.contains("uber") || clean.contains("lyft") || clean.contains("gas") ||
-            clean.contains("shell") || clean.contains("chevron") || clean.contains("transit") ||
-            clean.contains("subway") || clean.contains("train") || clean.contains("airline") -> {
-                categories.find { it.name.contains("Transport", ignoreCase = true) }
-            }
-            clean.contains("netflix") || clean.contains("spotify") || clean.contains("youtube") ||
-            clean.contains("apple") || clean.contains("hulu") || clean.contains("disney") ||
-            clean.contains("patreon") || clean.contains("subscription") -> {
-                categories.find { it.name.contains("Subscription", ignoreCase = true) }
-            }
-            clean.contains("rent") || clean.contains("apartment") || clean.contains("mortgage") ||
-            clean.contains("housing") -> {
-                categories.find { it.name.contains("Housing", ignoreCase = true) }
-            }
-            clean.contains("electric") || clean.contains("power") || clean.contains("water") ||
-            clean.contains("internet") || clean.contains("wifi") || clean.contains("verizon") ||
-            clean.contains("at&t") || clean.contains("t-mobile") -> {
-                categories.find { it.name.contains("Utilities", ignoreCase = true) }
-            }
-            clean.contains("amazon") || clean.contains("ebay") || clean.contains("zara") ||
-            clean.contains("nike") || clean.contains("h&m") || clean.contains("clothing") ||
-            clean.contains("mall") -> {
-                categories.find { it.name.contains("Shopping", ignoreCase = true) }
-            }
-            clean.contains("pharmacy") || clean.contains("cvs") || clean.contains("walgreens") ||
-            clean.contains("doctor") || clean.contains("dental") || clean.contains("hospital") -> {
-                categories.find { it.name.contains("Health", ignoreCase = true) }
-            }
-            clean.contains("salary") || clean.contains("payroll") || clean.contains("wage") ||
-            clean.contains("bonus") -> {
-                categories.find { it.name.contains("Salary", ignoreCase = true) || it.name.contains("Income", ignoreCase = true) }
-            }
-            else -> null
-        }
+        return com.example.domain.usecase.SuggestCategoryUseCase().invoke(
+            merchant = merchant,
+            transactions = allTransactions.value,
+            categories = allCategories.value
+        )
     }
 
     fun computeTotalBalance(accounts: List<AccountEntity>, transactions: List<TransactionEntity>): Double {
-        var balance = accounts.sumOf { it.balance }
+        var balance = accounts.sumOf { it.openingBalance }
         transactions.forEach { tx ->
-            when (tx.type.uppercase()) {
+            when (tx.type.name) {
                 "INCOME" -> balance += tx.amount
                 "EXPENSE" -> balance -= tx.amount
                 // Transfers between owned accounts don't alter net aggregate total
@@ -389,3 +364,4 @@ class AnalyticsDelegate(
         return balance
     }
 }
+

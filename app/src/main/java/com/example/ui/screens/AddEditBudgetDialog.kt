@@ -1,8 +1,10 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -60,6 +62,8 @@ fun AddEditBudgetDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp)
             ) {
                 Row(

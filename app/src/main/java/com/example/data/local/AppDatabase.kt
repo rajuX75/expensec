@@ -138,6 +138,7 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     version = 5,
     exportSchema = false
 )
+@androidx.room.TypeConverters(RoomConverters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun transactionDao(): TransactionDao
@@ -218,11 +219,13 @@ abstract class AppDatabase : RoomDatabase() {
                 categoryDao.insertCategories(defaultCategories)
             }
 
-            // Initial blank default account with 0.00 balance
-            val defaultAccounts = listOf(
-                AccountEntity(name = "Cash Wallet", type = "CASH", balance = 0.0, currency = "USD", colorHex = "#10B981", iconName = "wallet")
-            )
-            accountDao.insertAccounts(defaultAccounts)
+            // Only seed the default account on a truly empty table (idempotent; never re-seed).
+            if (accountDao.getAccountCount() == 0) {
+                val defaultAccounts = listOf(
+                    AccountEntity(name = "Cash Wallet", type = "CASH", openingBalance = 0.0, currency = "USD", colorHex = "#10B981", iconName = "wallet")
+                )
+                accountDao.insertAccounts(defaultAccounts)
+            }
         }
     }
 }

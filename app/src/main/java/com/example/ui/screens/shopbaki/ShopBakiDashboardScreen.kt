@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.*
@@ -31,6 +32,7 @@ import kotlin.math.abs
 @Composable
 fun ShopBakiDashboardScreen(
     viewModel: ExpenseViewModel,
+    onNavigateBack: () -> Unit = {},
     onNavigateToShopDetail: (Long) -> Unit
 ) {
     val currencySymbol by viewModel.currencySymbol.collectAsState()
@@ -54,6 +56,24 @@ fun ShopBakiDashboardScreen(
     }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Shop Baki (Ledger)",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddShopDialog = true },
@@ -75,8 +95,13 @@ fun ShopBakiDashboardScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                .consumeWindowInsets(innerPadding),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = innerPadding.calculateTopPadding() + 12.dp,
+                end = 16.dp,
+                bottom = innerPadding.calculateBottomPadding() + 80.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Summary Header (clear hierarchy + semantic color zones)

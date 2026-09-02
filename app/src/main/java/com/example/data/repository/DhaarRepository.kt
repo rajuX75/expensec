@@ -196,13 +196,13 @@ class DhaarRepository(
             val contactName = contact?.name ?: "Contact #${entry.contactId}"
             val accName = accountName ?: "Account #${entry.linkedAccountId}"
 
-            val txType = when (entry.type.uppercase()) {
-                "GIVEN" -> "EXPENSE"     // Lent money from account -> Expense cash outflow
-                "RECEIVED" -> "INCOME"   // Borrowed money into account -> Income cash inflow
+            val txTypeEnum = when (entry.type.uppercase()) {
+                "GIVEN" -> com.example.data.model.TransactionType.EXPENSE
+                "RECEIVED" -> com.example.data.model.TransactionType.INCOME
                 "SETTLEMENT" -> {
-                    if (entry.isSettlementGive == true) "EXPENSE" else "INCOME"
+                    if (entry.isSettlementGive == true) com.example.data.model.TransactionType.EXPENSE else com.example.data.model.TransactionType.INCOME
                 }
-                else -> "EXPENSE"
+                else -> com.example.data.model.TransactionType.EXPENSE
             }
 
             val notePrefix = when (entry.type.uppercase()) {
@@ -215,13 +215,13 @@ class DhaarRepository(
             val fullNote = if (entry.note.isNotBlank()) "$notePrefix: ${entry.note}" else notePrefix
 
             val transaction = TransactionEntity(
-                type = txType,
+                type = txTypeEnum,
                 amount = entry.amount,
                 currency = entry.currencyCode,
                 categoryId = 0,
                 categoryName = "Dena-Pawna (Lending)",
                 categoryIcon = "handshake",
-                categoryColorHex = if (txType == "INCOME") "#10B981" else "#EF4444",
+                categoryColorHex = if (txTypeEnum == com.example.data.model.TransactionType.INCOME) "#10B981" else "#EF4444",
                 accountId = entry.linkedAccountId,
                 accountName = accName,
                 date = entry.date,

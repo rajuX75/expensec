@@ -57,21 +57,25 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         // app version (possibly with an incompatible worker definition) is discarded
         // instead of crashing, and guard the whole call so a WorkManager failure can
         // never crash the app at startup.
-        try {
-            val uploadWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.data.cloud.CloudinaryImageUploadWorker>()
-                .setConstraints(
-                    androidx.work.Constraints.Builder()
-                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                        .build()
+        // Only enqueue if Cloudinary credentials have been configured — avoids an
+        // unnecessary network constraint wake-up for users who have never set up Cloudinary.
+        if (userPrefs.cloudinaryCloudName.value.isNotBlank()) {
+            try {
+                val uploadWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.data.cloud.CloudinaryImageUploadWorker>()
+                    .setConstraints(
+                        androidx.work.Constraints.Builder()
+                            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                            .build()
+                    )
+                    .build()
+                androidx.work.WorkManager.getInstance(application).enqueueUniqueWork(
+                    "CloudinaryImageUpload",
+                    androidx.work.ExistingWorkPolicy.REPLACE,
+                    uploadWorkRequest
                 )
-                .build()
-            androidx.work.WorkManager.getInstance(application).enqueueUniqueWork(
-                "CloudinaryImageUpload",
-                androidx.work.ExistingWorkPolicy.REPLACE,
-                uploadWorkRequest
-            )
-        } catch (e: Exception) {
-            android.util.Log.e("ExpenseViewModel", "Failed to enqueue Cloudinary upload work", e)
+            } catch (e: Exception) {
+                android.util.Log.e("ExpenseViewModel", "Failed to enqueue Cloudinary upload work", e)
+            }
         }
     }
 
@@ -459,8 +463,14 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         val accountId: Long?
     )
 
+    // Debounce the search query so filteredTransactions doesn't recompute on every keystroke.
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    private val _debouncedSearch = _searchQuery
+        .debounce(300)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
     private val _filterCriteria = combine(
-        _searchQuery,
+        _debouncedSearch,
         _filterType,
         _filterTimeRange,
         _filterCategoryId,
@@ -482,7 +492,7 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 tx.categoryName.contains(filter.query, ignoreCase = true) ||
                 tx.tags.contains(filter.query, ignoreCase = true)
 
-            val matchesType = filter.type == "ALL" || tx.type.equals(filter.type, ignoreCase = true)
+            val matchesType = filter.type == "ALL" || tx.type.name.equals(filter.type, ignoreCase = true)
             val matchesCategory = filter.categoryId == null || tx.categoryId == filter.categoryId
             val matchesAccount = filter.accountId == null || tx.accountId == filter.accountId || tx.toAccountId == filter.accountId
 
@@ -683,35 +693,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     fun markBillAsPaid(bill: BillEntity) {
         viewModelScope.launch(Dispatchers.IO) {
-            val updated = bill.copy(isPaid = true, lastPaidDate = System.currentTimeMillis())
-            repository.updateBill(updated)
-            googleAuthManager.currentUserId?.let { uid ->
-                firestoreSyncManager.pushBill(uid, updated)
-            }
-
-            if (bill.autoLogTransaction) {
-                val accounts = allAccounts.value
-                val account = accounts.find { it.id == bill.accountId } ?: accounts.firstOrNull()
-                val tx = TransactionEntity(
-                    type = "EXPENSE",
-                    amount = bill.amount,
-                    categoryId = bill.categoryId,
-                    categoryName = bill.categoryName,
-                    categoryIcon = "bolt",
-                    categoryColorHex = "#06B6D4",
-                    accountId = account?.id ?: 1,
-                    accountName = account?.name ?: "Main Account",
-                    date = System.currentTimeMillis(),
-                    note = "Paid Bill: ${bill.title}",
-                    merchant = bill.title,
-                    paymentMethod = "Auto Bill Pay",
-                    tags = "BillPay, ${bill.frequency}"
-                )
-                val newId = repository.insertTransaction(tx)
-                googleAuthManager.currentUserId?.let { uid ->
-                    firestoreSyncManager.pushTransaction(uid, tx.copy(id = newId))
-                }
-            }
+            com.example.domain.usecase.MarkBillPaidUseCase(
+                repository = repository,
+                firestoreSyncManager = firestoreSyncManager,
+                getCurrentUserId = { googleAuthManager.currentUserId }
+            ).invoke(bill, allAccounts.value, allCategories.value)
         }
     }
 
@@ -723,26 +709,11 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         date: Long = System.currentTimeMillis()
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val transferTx = TransactionEntity(
-                type = "TRANSFER",
-                amount = amount,
-                accountId = fromAccount.id,
-                accountName = fromAccount.name,
-                toAccountId = toAccount.id,
-                toAccountName = toAccount.name,
-                categoryName = "Transfer",
-                categoryIcon = "swap_horiz",
-                categoryColorHex = "#3B82F6",
-                date = date,
-                note = note.ifBlank { "Transfer from ${fromAccount.name} to ${toAccount.name}" },
-                merchant = "Internal Transfer",
-                paymentMethod = "Transfer",
-                tags = "Transfer"
-            )
-            val newId = repository.insertTransaction(transferTx)
-            googleAuthManager.currentUserId?.let { uid ->
-                firestoreSyncManager.pushTransaction(uid, transferTx.copy(id = newId))
-            }
+            com.example.domain.usecase.TransferFundsUseCase(
+                repository = repository,
+                firestoreSyncManager = firestoreSyncManager,
+                getCurrentUserId = { googleAuthManager.currentUserId }
+            ).invoke(fromAccount, toAccount, amount, note, date)
         }
     }
 
@@ -824,6 +795,17 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
     fun clearAllData() {
         viewModelScope.launch(Dispatchers.IO) {
+            // Cancel any pending Cloudinary upload jobs first so they don't race
+            // against the wipe and attempt to push data that no longer exists.
+            try {
+                androidx.work.WorkManager.getInstance(getApplication())
+                    .cancelUniqueWork("CloudinaryImageUpload")
+            } catch (e: Exception) {
+                android.util.Log.w("ExpenseViewModel", "Could not cancel upload work before clear: ${e.message}")
+            }
+            database.shopLedgerEntryDao().deleteAllLedgerEntries()
+            database.shopProductDao().deleteAllProducts()
+            database.shopDao().deleteAllShops()
             database.dhaarEntryDao().deleteAllEntries()
             database.contactDao().deleteAllContacts()
             database.transactionDao().deleteAllTransactions()

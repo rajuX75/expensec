@@ -38,7 +38,7 @@ object BackupSerializer {
             obj.put("uuid", acc.uuid)
             obj.put("name", acc.name)
             obj.put("type", acc.type)
-            obj.put("balance", acc.balance)
+            obj.put("balance", acc.openingBalance)
             obj.put("currency", acc.currency)
             obj.put("colorHex", acc.colorHex)
             obj.put("iconName", acc.iconName)
@@ -67,7 +67,7 @@ object BackupSerializer {
             val obj = JSONObject()
             obj.put("id", tx.id)
             obj.put("uuid", tx.uuid)
-            obj.put("type", tx.type)
+            obj.put("type", tx.type.name)
             obj.put("amount", tx.amount)
             obj.put("currency", tx.currency)
             obj.put("categoryId", tx.categoryId)
@@ -208,7 +208,7 @@ object BackupSerializer {
                             uuid = obj.optString("uuid").ifBlank { UUID.randomUUID().toString() },
                             name = obj.optString("name", "Account"),
                             type = obj.optString("type", "BANK"),
-                            balance = obj.optDouble("balance", 0.0),
+                            openingBalance = obj.optDouble("balance", 0.0),
                             currency = obj.optString("currency", "USD"),
                             colorHex = obj.optString("colorHex", "#00875A"),
                             iconName = obj.optString("iconName", "account_balance")
@@ -247,7 +247,7 @@ object BackupSerializer {
                         TransactionEntity(
                             id = obj.optLong("id", 0),
                             uuid = obj.optString("uuid").ifBlank { UUID.randomUUID().toString() },
-                            type = obj.optString("type", "EXPENSE"),
+                            type = runCatching { com.example.data.model.TransactionType.valueOf(obj.optString("type", "EXPENSE").uppercase()) }.getOrDefault(com.example.data.model.TransactionType.EXPENSE),
                             amount = obj.optDouble("amount", 0.0),
                             currency = obj.optString("currency", "USD"),
                             categoryId = obj.optLong("categoryId", 0),

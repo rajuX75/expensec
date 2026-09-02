@@ -28,7 +28,7 @@ object CsvSerializer {
             val row = listOf(
                 escapeCsv(tx.uuid),
                 tx.id.toString(),
-                escapeCsv(tx.type),
+                escapeCsv(tx.type.name),
                 String.format(Locale.US, "%.2f", tx.amount),
                 escapeCsv(tx.currency),
                 escapeCsv(tx.categoryName),

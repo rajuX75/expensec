@@ -42,7 +42,7 @@ class FirestoreTransactionSyncer(
                                 val entity = TransactionEntity(
                                     id = existing?.id ?: 0L,
                                     uuid = uuid,
-                                    type = data["type"] as? String ?: "EXPENSE",
+                                    type = (data["type"] as? String)?.let { runCatching { com.example.data.model.TransactionType.valueOf(it.uppercase()) }.getOrNull() } ?: com.example.data.model.TransactionType.EXPENSE,
                                     amount = (data["amount"] as? Number)?.toDouble() ?: 0.0,
                                     currency = data["currency"] as? String ?: "USD",
                                     categoryId = (data["categoryId"] as? Number)?.toLong() ?: 0L,
@@ -81,7 +81,7 @@ class FirestoreTransactionSyncer(
             val docRef = transCollection.document(local.uuid)
             val data = hashMapOf(
                 "uuid" to local.uuid,
-                "type" to local.type,
+                "type" to local.type.name,
                 "amount" to local.amount,
                 "currency" to local.currency,
                 "categoryId" to local.categoryId,
@@ -116,7 +116,7 @@ class FirestoreTransactionSyncer(
             val entity = TransactionEntity(
                 id = existing?.id ?: 0L,
                 uuid = uuid,
-                type = data["type"] as? String ?: "EXPENSE",
+                type = (data["type"] as? String)?.let { runCatching { com.example.data.model.TransactionType.valueOf(it.uppercase()) }.getOrNull() } ?: com.example.data.model.TransactionType.EXPENSE,
                 amount = (data["amount"] as? Number)?.toDouble() ?: 0.0,
                 currency = data["currency"] as? String ?: "USD",
                 categoryId = (data["categoryId"] as? Number)?.toLong() ?: 0L,
@@ -156,7 +156,7 @@ class FirestoreTransactionSyncer(
             val docRef = firestore.collection("users").document(userId).collection("transactions").document(transaction.uuid)
             val data = hashMapOf(
                 "uuid" to transaction.uuid,
-                "type" to transaction.type,
+                "type" to transaction.type.name,
                 "amount" to transaction.amount,
                 "currency" to transaction.currency,
                 "categoryId" to transaction.categoryId,

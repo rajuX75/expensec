@@ -100,8 +100,13 @@ fun ProfileScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
+                .consumeWindowInsets(innerPadding),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = innerPadding.calculateTopPadding() + 16.dp,
+                end = 16.dp,
+                bottom = innerPadding.calculateBottomPadding() + 16.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Avatar & Name Hero Card

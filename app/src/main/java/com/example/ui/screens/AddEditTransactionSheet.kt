@@ -60,7 +60,7 @@ fun AddEditTransactionSheet(
     val allAccounts by viewModel.allAccounts.collectAsState()
 
     var selectedType by remember {
-        mutableStateOf(initialTransaction?.type ?: initialType)
+        mutableStateOf(initialTransaction?.type?.name ?: initialType)
     }
 
     var amountText by remember {
@@ -124,8 +124,9 @@ fun AddEditTransactionSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
+                .padding(bottom = 32.dp)
         ) {
             // Header
             Row(
@@ -542,7 +543,7 @@ fun AddEditTransactionSheet(
                     val finalTx = TransactionEntity(
                         id = initialTransaction?.id ?: 0,
                         uuid = initialTransaction?.uuid ?: UUID.randomUUID().toString(),
-                        type = selectedType,
+                        type = com.example.data.model.TransactionType.valueOf(selectedType),
                         amount = amount,
                         currency = viewModel.currency.value,
                         categoryId = selectedCategory?.id ?: 0,
@@ -593,3 +594,4 @@ fun AddEditTransactionSheet(
         }
     }
 }
+

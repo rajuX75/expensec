@@ -90,6 +90,7 @@ fun AddEditShopDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .imePadding()
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {

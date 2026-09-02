@@ -22,10 +22,10 @@ android {
 
     val envCloudName = System.getenv("CLOUDINARY_CLOUD_NAME") ?: ""
     val envApiKey = System.getenv("CLOUDINARY_API_KEY") ?: ""
-    val envApiSecret = System.getenv("CLOUDINARY_API_SECRET") ?: ""
+    // SECURITY: API secret is intentionally excluded from BuildConfig (decompilable).
+    // Configure Cloudinary credentials at runtime via Settings > Cloudinary Configuration.
     buildConfigField("String", "ENV_CLOUDINARY_CLOUD_NAME", "\"$envCloudName\"")
     buildConfigField("String", "ENV_CLOUDINARY_API_KEY", "\"$envApiKey\"")
-    buildConfigField("String", "ENV_CLOUDINARY_API_SECRET", "\"$envApiSecret\"")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -99,7 +99,6 @@ googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.W
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
   implementation(platform(libs.firebase.bom))
-  // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
   // implementation(libs.androidx.camera.camera2)
   // implementation(libs.androidx.camera.core)
@@ -142,7 +141,6 @@ dependencies {
   implementation(libs.logging.interceptor)
   implementation(libs.moshi.kotlin)
   implementation(libs.okhttp)
-  // implementation(libs.play.services.location)
   implementation(libs.retrofit)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)

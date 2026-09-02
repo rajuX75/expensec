@@ -95,6 +95,7 @@ fun FeedbackDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .imePadding()
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
