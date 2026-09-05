@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -17,17 +16,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.data.model.BudgetEntity
 import com.example.ui.components.BudgetProgressBar
 import com.example.ui.components.CategoryBadge
 import com.example.ui.components.CategoryIconHelper
-import com.example.ui.theme.AmberAccent
-import com.example.ui.theme.AmberLight
-import com.example.ui.theme.ExpenseRed
-import com.example.ui.theme.ExpenseRedLight
+import com.example.ui.theme.*
 import com.example.ui.viewmodel.ExpenseViewModel
+import java.util.Locale
 
+/**
+ * Skill: component-family-consistency & status-colors-and-errors (Dembrandt Stage 2 & 4).
+ *
+ * Replaces hardcoded light pastels with theme-aware container tokens, standardizes FAB
+ * shape to ShapeTokens.large, pairs cards with cardBorderStroke, and applies tabular
+ * numerals to budget limits and spent figures.
+ */
 @Composable
 fun BudgetsScreen(
     viewModel: ExpenseViewModel
@@ -35,6 +38,7 @@ fun BudgetsScreen(
     val currencySymbol by viewModel.currencySymbol.collectAsState()
     val budgetStatuses by viewModel.budgetStatuses.collectAsState()
     val allCategories by viewModel.allCategories.collectAsState()
+    val financialColors = MaterialTheme.financialColors
 
     var showAddEditDialog by remember { mutableStateOf(false) }
     var selectedBudgetToEdit by remember { mutableStateOf<BudgetEntity?>(null) }
@@ -59,8 +63,8 @@ fun BudgetsScreen(
                     showAddEditDialog = true
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                shape = CircleShape
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = ShapeTokens.large
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Budget Limit")
             }
@@ -74,24 +78,34 @@ fun BudgetsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
         ) {
-            // Budget Alerts Banner if any are triggered
+            // Budget Alerts Banner if any are triggered (Theme-Aware Containers)
             if (alertBudgets.isNotEmpty()) {
+                val hasOver = alertBudgets.any { it.isOverBudget }
+                val bannerBg = if (hasOver) financialColors.expenseContainer else financialColors.warningContainer
+                val bannerBorder = if (hasOver) financialColors.expense else financialColors.warning
+                val bannerTextColor = if (hasOver) financialColors.onExpenseContainer else financialColors.onWarningContainer
+                val bannerIconTint = if (hasOver) financialColors.expense else financialColors.warning
+
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = ShapeTokens.large,
                         colors = CardDefaults.cardColors(
-                            containerColor = if (alertBudgets.any { it.isOverBudget }) ExpenseRedLight else AmberLight
-                        )
+                            containerColor = bannerBg,
+                            contentColor = bannerTextColor
+                        ),
+                        border = cardBorderStroke(bannerBorder.copy(alpha = 0.35f))
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = "Budget Alert",
-                                tint = if (alertBudgets.any { it.isOverBudget }) ExpenseRed else Color(0xFFB45309),
+                                tint = bannerIconTint,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -101,12 +115,12 @@ fun BudgetsScreen(
                                 Text(
                                     text = if (overCount > 0) "$overCount budget limit exceeded!" else "$nearCount budget(s) nearing limit",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = if (overCount > 0) ExpenseRed else Color(0xFF92400E)
+                                    color = bannerTextColor
                                 )
                                 Text(
                                     text = "Monitor your expenses closely to stay on track",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = if (overCount > 0) ExpenseRed.copy(alpha = 0.8f) else Color(0xFF92400E).copy(alpha = 0.8f)
+                                    color = bannerTextColor.copy(alpha = 0.85f)
                                 )
                             }
                         }
@@ -120,13 +134,14 @@ fun BudgetsScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(ShapeTokens.large)
                             .clickable {
                                 selectedBudgetToEdit = overallBudgetStatus.budget
                                 showAddEditDialog = true
                             },
-                        shape = RoundedCornerShape(20.dp),
+                        shape = ShapeTokens.large,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = cardBorderStroke(),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         Column(
@@ -161,8 +176,8 @@ fun BudgetsScreen(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "Limit: $currencySymbol${String.format("%,.2f", overallBudgetStatus.budget.amountLimit)}",
-                                            style = MaterialTheme.typography.labelSmall,
+                                            text = "Limit: $currencySymbol${String.format(Locale.US, "%,.2f", overallBudgetStatus.budget.amountLimit)}",
+                                            style = MaterialTheme.typography.labelSmall.tabular(),
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -183,17 +198,17 @@ fun BudgetsScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "Spent: $currencySymbol${String.format("%,.2f", overallBudgetStatus.spentAmount)}",
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    text = "Spent: $currencySymbol${String.format(Locale.US, "%,.2f", overallBudgetStatus.spentAmount)}",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold).tabular(),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "${overallBudgetStatus.percentage.toInt()}%",
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                                     color = when {
-                                        overallBudgetStatus.isOverBudget -> ExpenseRed
-                                        overallBudgetStatus.isNearLimit -> AmberAccent
-                                        else -> MaterialTheme.colorScheme.primary
+                                        overallBudgetStatus.isOverBudget -> financialColors.expense
+                                        overallBudgetStatus.isNearLimit -> financialColors.warning
+                                        else -> financialColors.income
                                     }
                                 )
                             }
@@ -236,23 +251,34 @@ fun BudgetsScreen(
 
             if (categoryBudgetStatuses.isEmpty()) {
                 item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = ShapeTokens.large,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                        border = cardBorderStroke()
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(28.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Category,
                                 contentDescription = null,
                                 modifier = Modifier.size(44.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                             Text(
                                 text = "No category budgets set yet",
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Set individual limits for food, entertainment, utilities, and more.",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -267,13 +293,14 @@ fun BudgetsScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(18.dp))
+                            .clip(ShapeTokens.large)
                             .clickable {
                                 selectedBudgetToEdit = status.budget
                                 showAddEditDialog = true
                             },
-                        shape = RoundedCornerShape(18.dp),
+                        shape = ShapeTokens.large,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = cardBorderStroke(),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                     ) {
                         Column(
@@ -301,8 +328,8 @@ fun BudgetsScreen(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "$currencySymbol${String.format("%,.0f", status.spentAmount)} of $currencySymbol${String.format("%,.0f", status.budget.amountLimit)}",
-                                            style = MaterialTheme.typography.labelSmall,
+                                            text = "$currencySymbol${String.format(Locale.US, "%,.0f", status.spentAmount)} of $currencySymbol${String.format(Locale.US, "%,.0f", status.budget.amountLimit)}",
+                                            style = MaterialTheme.typography.labelSmall.tabular(),
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
@@ -310,14 +337,14 @@ fun BudgetsScreen(
 
                                 if (status.isOverBudget) {
                                     Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = ExpenseRedLight
+                                        shape = ShapeTokens.small,
+                                        color = financialColors.expenseContainer
                                     ) {
                                         Text(
                                             text = "OVER",
                                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                            color = ExpenseRed,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            color = financialColors.onExpenseContainer,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                         )
                                     }
                                 }

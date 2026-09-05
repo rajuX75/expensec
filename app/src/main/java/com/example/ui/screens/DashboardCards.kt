@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowOutward
 import androidx.compose.material3.*
@@ -17,10 +16,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.ui.theme.ShapeTokens
+import com.example.ui.theme.cardBorderStroke
+import com.example.ui.theme.tabular
 
 /**
- * Reusable card and pill composables used by DashboardScreen.
- * Extracted from DashboardScreen.kt for single-responsibility.
+ * Skill: component-family-consistency & repeated-component-alignment (Dembrandt Stage 2 & 4).
+ *
+ * Reusable card and pill composables for the Dashboard, applying concentric border radius,
+ * the Dembrandt "Shadow + 1px subtle border" rule, and tabular numerals for financial figures.
  */
 
 @Composable
@@ -34,15 +38,16 @@ fun QuickActionPill(
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = ShapeTokens.pill,
         color = MaterialTheme.colorScheme.surface,
+        border = cardBorderStroke(),
         shadowElevation = 1.dp,
         modifier = modifier.height(48.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
@@ -62,7 +67,7 @@ fun QuickActionPill(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
@@ -83,16 +88,17 @@ fun BentoCard(
 ) {
     Card(
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
+            .clip(ShapeTokens.large)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = ShapeTokens.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = cardBorderStroke(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -101,7 +107,7 @@ fun BentoCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(34.dp)
+                        .size(36.dp)
                         .background(iconBg, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -109,7 +115,7 @@ fun BentoCard(
                         imageVector = icon,
                         contentDescription = null,
                         tint = iconTint,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
@@ -141,7 +147,7 @@ fun BentoCard(
 
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                 color = iconTint,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

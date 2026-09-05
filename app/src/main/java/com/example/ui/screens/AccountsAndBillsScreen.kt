@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
@@ -18,20 +17,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.data.model.AccountEntity
 import com.example.data.model.BillEntity
 import com.example.ui.components.CategoryBadge
 import com.example.ui.components.CategoryIconHelper
-import com.example.ui.theme.ExpenseRed
-import com.example.ui.theme.ExpenseRedLight
-import com.example.ui.theme.IncomeGreen
-import com.example.ui.theme.IncomeGreenLight
+import com.example.ui.theme.*
 import com.example.ui.viewmodel.ExpenseViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 
+/**
+ * Skill: component-family-consistency & repeated-component-alignment (Dembrandt Stage 2 & 4).
+ *
+ * Harmonizes tabs, cards, and FAB shapes with ShapeTokens, applies the Dembrandt
+ * "Shadow + 1px subtle border" rule, uses theme-aware containers for bill status badges,
+ * and renders financial balances with tabular numerals.
+ */
 @Composable
 fun AccountsAndBillsScreen(
     viewModel: ExpenseViewModel,
@@ -40,6 +42,7 @@ fun AccountsAndBillsScreen(
     val currencySymbol by viewModel.currencySymbol.collectAsState()
     val accountsWithBalances by viewModel.accountsWithBalances.collectAsState()
     val bills by viewModel.allBills.collectAsState()
+    val financialColors = MaterialTheme.financialColors
 
     var selectedTab by remember { mutableStateOf(0) } // 0: Accounts, 1: Bills
 
@@ -62,8 +65,8 @@ fun AccountsAndBillsScreen(
                     }
                 },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                shape = CircleShape
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = ShapeTokens.large
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -119,10 +122,11 @@ fun AccountsAndBillsScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(ShapeTokens.large)
                                 .clickable(onClick = onOpenTransfer),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            shape = ShapeTokens.large,
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                            border = cardBorderStroke()
                         ) {
                             Row(
                                 modifier = Modifier
@@ -164,13 +168,14 @@ fun AccountsAndBillsScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(20.dp))
+                                .clip(ShapeTokens.large)
                                 .clickable {
                                     selectedAccountToEdit = acc
                                     showAddEditAccountDialog = true
                                 },
-                            shape = RoundedCornerShape(20.dp),
+                            shape = ShapeTokens.large,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = cardBorderStroke(),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             Row(
@@ -203,37 +208,22 @@ fun AccountsAndBillsScreen(
                                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color = MaterialTheme.colorScheme.surfaceVariant
-                                            ) {
-                                                Text(
-                                                    text = acc.type,
-                                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                            Text(
-                                                text = "${item.transactionCount} transactions",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
+                                        Text(
+                                            text = acc.type,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
 
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
-                                        text = "$currencySymbol${String.format("%,.2f", item.liveBalance)}",
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = if (item.liveBalance >= 0) MaterialTheme.colorScheme.onSurface else ExpenseRed
+                                        text = "$currencySymbol${String.format(Locale.US, "%,.2f", item.liveBalance)}",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
+                                        color = if (item.liveBalance >= 0) MaterialTheme.colorScheme.onSurface else financialColors.expense
                                     )
                                     Text(
-                                        text = "Current Balance",
+                                        text = "Balance",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -256,23 +246,34 @@ fun AccountsAndBillsScreen(
                 ) {
                     if (bills.isEmpty()) {
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(48.dp),
-                                contentAlignment = Alignment.Center
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = ShapeTokens.large,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                                border = cardBorderStroke()
                             ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.EventNote,
                                         contentDescription = null,
-                                        modifier = Modifier.size(54.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                                     )
-                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Spacer(modifier = Modifier.height(10.dp))
                                     Text(
                                         text = "No bills or subscriptions logged",
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Tap + to track electricity, rent, internet or subscriptions",
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -286,16 +287,17 @@ fun AccountsAndBillsScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(18.dp))
+                                    .clip(ShapeTokens.large)
                                     .clickable {
                                         selectedBillToEdit = bill
                                         showAddEditBillDialog = true
                                     },
-                                shape = RoundedCornerShape(18.dp),
+                                shape = ShapeTokens.large,
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (bill.isPaid) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    containerColor = if (bill.isPaid) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
                                     else MaterialTheme.colorScheme.surface
                                 ),
+                                border = cardBorderStroke(),
                                 elevation = CardDefaults.cardElevation(defaultElevation = if (bill.isPaid) 0.dp else 2.dp)
                             ) {
                                 Row(
@@ -313,8 +315,8 @@ fun AccountsAndBillsScreen(
                                             modifier = Modifier
                                                 .size(42.dp)
                                                 .background(
-                                                    if (bill.isPaid) IncomeGreen.copy(alpha = 0.15f)
-                                                    else if (isOverdue) ExpenseRed.copy(alpha = 0.15f)
+                                                    if (bill.isPaid) financialColors.income.copy(alpha = 0.15f)
+                                                    else if (isOverdue) financialColors.expense.copy(alpha = 0.15f)
                                                     else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                                                     CircleShape
                                                 ),
@@ -325,8 +327,8 @@ fun AccountsAndBillsScreen(
                                                 else if (isOverdue) Icons.Default.Warning
                                                 else Icons.Default.Notifications,
                                                 contentDescription = null,
-                                                tint = if (bill.isPaid) IncomeGreen
-                                                else if (isOverdue) ExpenseRed
+                                                tint = if (bill.isPaid) financialColors.income
+                                                else if (isOverdue) financialColors.expense
                                                 else MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(22.dp)
                                             )
@@ -346,8 +348,8 @@ fun AccountsAndBillsScreen(
                                                 text = "${dateFormat.format(Date(bill.dueDate))} • ${bill.frequency}",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = when {
-                                                    bill.isPaid -> IncomeGreen
-                                                    isOverdue -> ExpenseRed
+                                                    bill.isPaid -> financialColors.income
+                                                    isOverdue -> financialColors.expense
                                                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                                                 }
                                             )
@@ -356,16 +358,16 @@ fun AccountsAndBillsScreen(
 
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(
-                                            text = "$currencySymbol${String.format("%,.2f", bill.amount)}",
-                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                            text = "$currencySymbol${String.format(Locale.US, "%,.2f", bill.amount)}",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Spacer(modifier = Modifier.height(6.dp))
 
                                         if (!bill.isPaid) {
                                             FilledTonalButton(
                                                 onClick = { viewModel.markBillAsPaid(bill) },
-                                                shape = RoundedCornerShape(8.dp),
+                                                shape = ShapeTokens.small,
                                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                                 modifier = Modifier.height(30.dp)
                                             ) {
@@ -373,13 +375,13 @@ fun AccountsAndBillsScreen(
                                             }
                                         } else {
                                             Surface(
-                                                shape = RoundedCornerShape(6.dp),
-                                                color = IncomeGreenLight
+                                                shape = ShapeTokens.small,
+                                                color = financialColors.incomeContainer
                                             ) {
                                                 Text(
                                                     text = "PAID",
                                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                                    color = IncomeGreen,
+                                                    color = financialColors.onIncomeContainer,
                                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                                                 )
                                             }

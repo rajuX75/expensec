@@ -8,6 +8,8 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
@@ -22,16 +24,20 @@ private val DarkColorScheme = darkColorScheme(
     onSecondaryContainer = Slate100,
     tertiary = AmberAccent,
     onTertiary = Color.Black,
-    tertiaryContainer = Color(0xFF78350F),
-    onTertiaryContainer = AmberLight,
+    tertiaryContainer = AmberDarkContainer,
+    onTertiaryContainer = AmberDarkText,
     background = Slate900,
     onBackground = Slate50,
     surface = Slate800,
     onSurface = Slate50,
     surfaceVariant = SurfaceVariantDark,
     onSurfaceVariant = Slate200,
-    error = ExpenseRed,
-    onError = Color.White
+    outline = Slate600,
+    outlineVariant = Slate700,
+    error = Color(0xFFFB7185),
+    onError = Color(0xFF4C0519),
+    errorContainer = ExpenseRedDarkContainer,
+    onErrorContainer = ExpenseRedDarkText
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -53,9 +59,21 @@ private val LightColorScheme = lightColorScheme(
     onSurface = Slate900,
     surfaceVariant = SurfaceVariantLight,
     onSurfaceVariant = Slate700,
+    outline = Slate400,
+    outlineVariant = Slate200,
     error = ExpenseRed,
-    onError = Color.White
+    onError = Color.White,
+    errorContainer = ExpenseRedLight,
+    onErrorContainer = Color(0xFF881337)
 )
+
+/**
+ * Convenience accessor for the app's financial semantic color palette.
+ */
+val MaterialTheme.financialColors: FinancialColors
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalFinancialColors.current
 
 @Composable
 fun MyApplicationTheme(
@@ -72,9 +90,16 @@ fun MyApplicationTheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    val financialColors = if (darkTheme) DarkFinancialColors else LightFinancialColors
+
+    CompositionLocalProvider(
+        LocalFinancialColors provides financialColors
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            shapes = AppShapes,
+            content = content
+        )
+    }
 }

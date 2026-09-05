@@ -23,6 +23,10 @@ import androidx.compose.ui.unit.dp
 import com.example.data.model.ShopWithBalance
 import com.example.ui.theme.ExpenseRed
 import com.example.ui.theme.IncomeGreen
+import com.example.ui.theme.ShapeTokens
+import com.example.ui.theme.cardBorderStroke
+import com.example.ui.theme.financialColors
+import com.example.ui.theme.tabular
 import com.example.ui.viewmodel.ExpenseViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -106,29 +110,18 @@ fun ShopBakiDashboardScreen(
         ) {
             // Summary Header (clear hierarchy + semantic color zones)
             item {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    shadowElevation = 4.dp
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = ShapeTokens.extraLarge,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    border = cardBorderStroke()
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-                                    )
-                                )
-                            )
-                            .padding(20.dp)
-                    ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             text = "Shop Baki Overview",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -137,20 +130,26 @@ fun ShopBakiDashboardScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text("You Owe", style = MaterialTheme.typography.labelMedium, color = ExpenseRed)
+                                Text(
+                                    "You Owe",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.financialColors.expense
+                                )
                                 Text(
                                     text = currencySymbol + String.format("%,.2f", kotlin.math.abs(totalBaki)),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = ExpenseRed
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold).tabular(),
+                                    color = MaterialTheme.financialColors.expense
                                 )
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text("Active Shops", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Text(
+                                    "Active Shops",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
                                 Text(
                                     text = shopsWithBalances.size.toString(),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold).tabular(),
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
@@ -245,11 +244,12 @@ fun ShopListItemCard(
     val due = item.currentDue
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = ShapeTokens.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = cardBorderStroke(),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
@@ -318,7 +318,7 @@ fun ShopListItemCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else if (!shop.phoneNumber.isNullOrBlank()) {
-                         Text(
+                        Text(
                             text = shop.phoneNumber,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -330,31 +330,31 @@ fun ShopListItemCard(
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = "$currencySymbol${String.format("%,.2f", abs(due))}",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = if (due > 0.01) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
+                    color = if (due > 0.01) MaterialTheme.financialColors.expense else MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 if (due > 0.01) {
                     Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = ExpenseRed.copy(alpha = 0.15f)
+                        shape = ShapeTokens.small,
+                        color = MaterialTheme.financialColors.expenseContainer
                     ) {
                         Text(
                             text = "To Pay",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = ExpenseRed,
+                            color = MaterialTheme.financialColors.expense,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 } else {
-                     Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = IncomeGreen.copy(alpha = 0.15f)
+                    Surface(
+                        shape = ShapeTokens.small,
+                        color = MaterialTheme.financialColors.incomeContainer
                     ) {
                         Text(
                             text = "Clear",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = IncomeGreen,
+                            color = MaterialTheme.financialColors.income,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }

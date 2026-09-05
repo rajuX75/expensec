@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -17,14 +16,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.data.model.TransactionEntity
-import com.example.ui.theme.ExpenseRed
-import com.example.ui.theme.IncomeGreen
-import com.example.ui.theme.TransferBlue
+import com.example.ui.theme.ShapeTokens
+import com.example.ui.theme.cardBorderStroke
+import com.example.ui.theme.financialColors
+import com.example.ui.theme.tabular
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * Skill: repeated-component-alignment & modular-scale-typography (Dembrandt Stage 2 & 4).
+ *
+ * Implements a strict fixed slot model across repeated transaction rows:
+ *  - Slot 1: Category Icon / Avatar Badge (pinned 44x44dp)
+ *  - Slot 2: Title / Merchant / Note + formatted date & account (clamp + recover)
+ *  - Slot 3: Amount with tabular numerals (tnum) and right-aligned category label
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TransactionItemCard(
@@ -40,10 +47,11 @@ fun TransactionItemCard(
     val isIncome = transaction.type == com.example.data.model.TransactionType.INCOME
     val isTransfer = transaction.type == com.example.data.model.TransactionType.TRANSFER
 
+    val financialColors = MaterialTheme.financialColors
     val amountColor = when {
-        isIncome -> IncomeGreen
-        isTransfer -> TransferBlue
-        else -> ExpenseRed
+        isIncome -> financialColors.income
+        isTransfer -> financialColors.transfer
+        else -> financialColors.expense
     }
 
     val amountPrefix = when {
@@ -55,15 +63,16 @@ fun TransactionItemCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(ShapeTokens.large)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        shape = RoundedCornerShape(16.dp),
+        shape = ShapeTokens.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
+        border = cardBorderStroke(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -72,17 +81,17 @@ fun TransactionItemCard(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Category Icon Badge
+            // Slot 1: Category Icon Badge (Pinned Dimensions)
             CategoryBadge(
                 iconName = if (isTransfer) "swap_horiz" else transaction.categoryIcon,
                 colorHex = if (isTransfer) "#3B82F6" else transaction.categoryColorHex,
-                size = 46.dp,
-                iconSize = 24.dp
+                size = 44.dp,
+                iconSize = 22.dp
             )
 
             Spacer(modifier = Modifier.width(14.dp))
 
-            // Transaction Details
+            // Slot 2: Transaction Details (Clamped text)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
@@ -108,7 +117,7 @@ fun TransactionItemCard(
                     if (transaction.receiptUri != null && transaction.receiptUri.isNotBlank()) {
                         Icon(
                             imageVector = Icons.Default.Receipt,
-                            contentDescription = "Has receipt",
+                            contentDescription = "Has receipt attachment",
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -117,9 +126,9 @@ fun TransactionItemCard(
                     if (transaction.isRecurring) {
                         Icon(
                             imageVector = Icons.Default.Repeat,
-                            contentDescription = "Recurring",
+                            contentDescription = "Recurring bill",
                             modifier = Modifier.size(16.dp),
-                            tint = Color(0xFFF59E0B)
+                            tint = financialColors.warning
                         )
                     }
                 }
@@ -169,13 +178,13 @@ fun TransactionItemCard(
                             if (cleanTag.isNotBlank()) {
                                 Surface(
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                                    shape = RoundedCornerShape(4.dp)
+                                    shape = ShapeTokens.small
                                 ) {
                                     Text(
                                         text = "#$cleanTag",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                        style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
                             }
@@ -186,14 +195,14 @@ fun TransactionItemCard(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            // Amount Column
+            // Slot 3: Amount Column (Tabular Numerals, Right Aligned)
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "$amountPrefix$currencySymbol${String.format("%,.2f", transaction.amount)}",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                    text = "$amountPrefix$currencySymbol${String.format(Locale.US, "%,.2f", transaction.amount)}",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                     color = amountColor
                 )
 
@@ -208,4 +217,3 @@ fun TransactionItemCard(
         }
     }
 }
-

@@ -84,7 +84,7 @@ fun DashboardScreen(
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = ShapeTokens.extraLarge,
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Box(
@@ -113,7 +113,7 @@ fun DashboardScreen(
                                 color = Color.White.copy(alpha = 0.8f)
                             )
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
+                                shape = ShapeTokens.small,
                                 color = Color.White.copy(alpha = 0.15f)
                             ) {
                                 Text(
@@ -127,13 +127,12 @@ fun DashboardScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Large Total Balance Text
+                        // Large Total Balance Text (Modular Scale + Tabular Numerals)
                         Text(
-                            text = "$currencySymbol${String.format("%,.2f", summary.totalBalance)}",
+                            text = "$currencySymbol${String.format(Locale.US, "%,.2f", summary.totalBalance)}",
                             style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 34.sp
-                            ),
+                                fontWeight = FontWeight.Bold
+                            ).tabular(),
                             color = Color.White
                         )
 
@@ -147,7 +146,7 @@ fun DashboardScreen(
                             // Monthly Income
                             Surface(
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(14.dp),
+                                shape = ShapeTokens.large,
                                 color = Color.Black.copy(alpha = 0.25f)
                             ) {
                                 Row(
@@ -175,8 +174,8 @@ fun DashboardScreen(
                                             color = Color.White.copy(alpha = 0.7f)
                                         )
                                         Text(
-                                            text = "$currencySymbol${String.format("%,.0f", summary.thisMonthIncome)}",
-                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            text = "$currencySymbol${String.format(Locale.US, "%,.0f", summary.thisMonthIncome)}",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                                             color = Color.White,
                                             maxLines = 1
                                         )
@@ -187,7 +186,7 @@ fun DashboardScreen(
                             // Monthly Expense
                             Surface(
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(14.dp),
+                                shape = ShapeTokens.large,
                                 color = Color.Black.copy(alpha = 0.25f)
                             ) {
                                 Row(
@@ -215,8 +214,8 @@ fun DashboardScreen(
                                             color = Color.White.copy(alpha = 0.7f)
                                         )
                                         Text(
-                                            text = "$currencySymbol${String.format("%,.0f", summary.thisMonthExpense)}",
-                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            text = "$currencySymbol${String.format(Locale.US, "%,.0f", summary.thisMonthExpense)}",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                                             color = Color.White,
                                             maxLines = 1
                                         )
@@ -401,13 +400,15 @@ fun DashboardScreen(
         // Overall Monthly Budget Detailed Progress Card (if set)
         if (overallBudgetStatus != null) {
             item {
+                val financialColors = MaterialTheme.financialColors
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(ShapeTokens.large)
                         .clickable { onNavigateToBudgets() },
-                    shape = RoundedCornerShape(20.dp),
+                    shape = ShapeTokens.large,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = cardBorderStroke(),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
@@ -442,7 +443,7 @@ fun DashboardScreen(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "Limit: $currencySymbol${String.format("%,.0f", overallBudgetStatus.budget.amountLimit)}",
+                                        text = "Limit: $currencySymbol${String.format(Locale.US, "%,.0f", overallBudgetStatus.budget.amountLimit)}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -451,25 +452,25 @@ fun DashboardScreen(
 
                             if (overallBudgetStatus.isOverBudget) {
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = ExpenseRedLight
+                                    shape = ShapeTokens.small,
+                                    color = financialColors.expenseContainer
                                 ) {
                                     Text(
                                         text = "OVER BUDGET",
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = ExpenseRed,
+                                        color = financialColors.onExpenseContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
                             } else if (overallBudgetStatus.isNearLimit) {
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = AmberLight
+                                    shape = ShapeTokens.small,
+                                    color = financialColors.warningContainer
                                 ) {
                                     Text(
                                         text = "NEAR LIMIT",
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = Color(0xFFB45309),
+                                        color = financialColors.onWarningContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
@@ -509,23 +510,34 @@ fun DashboardScreen(
 
         if (recentTransactions.isEmpty()) {
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = ShapeTokens.large,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                    border = cardBorderStroke()
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
                             contentDescription = null,
                             modifier = Modifier.size(44.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
                             text = "No transactions recorded yet",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Tap + Quick Actions above to record your first transaction",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

@@ -24,6 +24,10 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.ContactWithBalance
 import com.example.ui.theme.ExpenseRed
 import com.example.ui.theme.IncomeGreen
+import com.example.ui.theme.ShapeTokens
+import com.example.ui.theme.cardBorderStroke
+import com.example.ui.theme.financialColors
+import com.example.ui.theme.tabular
 import com.example.ui.viewmodel.ExpenseViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -101,10 +105,11 @@ fun DhaarDashboardScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = ShapeTokens.extraLarge,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
-                    )
+                    ),
+                    border = cardBorderStroke()
                 ) {
                     Column(
                         modifier = Modifier
@@ -124,8 +129,8 @@ fun DhaarDashboardScreen(
                         ) {
                             // Total You'll Get
                             Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = IncomeGreen.copy(alpha = 0.12f),
+                                shape = ShapeTokens.large,
+                                color = MaterialTheme.financialColors.incomeContainer,
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
@@ -133,29 +138,29 @@ fun DhaarDashboardScreen(
                                         Icon(
                                             Icons.Default.ArrowDownward,
                                             contentDescription = null,
-                                            tint = IncomeGreen,
+                                            tint = MaterialTheme.financialColors.income,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
                                             text = "You'll Get",
                                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                            color = IncomeGreen
+                                            color = MaterialTheme.financialColors.income
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
                                         text = "$currencySymbol${String.format("%,.2f", summary.totalYouWillGet)}",
-                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                        color = IncomeGreen
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold).tabular(),
+                                        color = MaterialTheme.financialColors.income
                                     )
                                 }
                             }
 
                             // Total You'll Pay
                             Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = ExpenseRed.copy(alpha = 0.12f),
+                                shape = ShapeTokens.large,
+                                color = MaterialTheme.financialColors.expenseContainer,
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
@@ -163,21 +168,21 @@ fun DhaarDashboardScreen(
                                         Icon(
                                             Icons.Default.ArrowUpward,
                                             contentDescription = null,
-                                            tint = ExpenseRed,
+                                            tint = MaterialTheme.financialColors.expense,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
                                             text = "You'll Pay",
                                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                            color = ExpenseRed
+                                            color = MaterialTheme.financialColors.expense
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
                                         text = "$currencySymbol${String.format("%,.2f", summary.totalYouWillPay)}",
-                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                        color = ExpenseRed
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold).tabular(),
+                                        color = MaterialTheme.financialColors.expense
                                     )
                                 }
                             }
@@ -411,11 +416,12 @@ fun ContactListItemCard(
     val isSettled = !isTheyOweYou && !isYouOweThem
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = ShapeTokens.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = cardBorderStroke(),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
@@ -445,8 +451,8 @@ fun ContactListItemCard(
                     Surface(
                         shape = CircleShape,
                         color = when {
-                            isTheyOweYou -> IncomeGreen.copy(alpha = 0.15f)
-                            isYouOweThem -> ExpenseRed.copy(alpha = 0.15f)
+                            isTheyOweYou -> MaterialTheme.financialColors.incomeContainer
+                            isYouOweThem -> MaterialTheme.financialColors.expenseContainer
                             else -> MaterialTheme.colorScheme.primaryContainer
                         },
                         modifier = Modifier.size(46.dp)
@@ -456,8 +462,8 @@ fun ContactListItemCard(
                                 text = contact.name.take(1).uppercase(),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = when {
-                                    isTheyOweYou -> IncomeGreen
-                                    isYouOweThem -> ExpenseRed
+                                    isTheyOweYou -> MaterialTheme.financialColors.income
+                                    isYouOweThem -> MaterialTheme.financialColors.expense
                                     else -> MaterialTheme.colorScheme.onPrimaryContainer
                                 }
                             )
@@ -493,19 +499,19 @@ fun ContactListItemCard(
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = "$currencySymbol${String.format("%,.2f", abs(netBalance))}",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                     color = when {
-                        isTheyOweYou -> IncomeGreen
-                        isYouOweThem -> ExpenseRed
+                        isTheyOweYou -> MaterialTheme.financialColors.income
+                        isYouOweThem -> MaterialTheme.financialColors.expense
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     }
                 )
 
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
+                    shape = ShapeTokens.small,
                     color = when {
-                        isTheyOweYou -> IncomeGreen.copy(alpha = 0.15f)
-                        isYouOweThem -> ExpenseRed.copy(alpha = 0.15f)
+                        isTheyOweYou -> MaterialTheme.financialColors.incomeContainer
+                        isYouOweThem -> MaterialTheme.financialColors.expenseContainer
                         else -> MaterialTheme.colorScheme.surfaceVariant
                     }
                 ) {
@@ -517,8 +523,8 @@ fun ContactListItemCard(
                         },
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = when {
-                            isTheyOweYou -> IncomeGreen
-                            isYouOweThem -> ExpenseRed
+                            isTheyOweYou -> MaterialTheme.financialColors.income
+                            isYouOweThem -> MaterialTheme.financialColors.expense
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)

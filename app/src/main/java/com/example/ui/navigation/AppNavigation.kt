@@ -86,7 +86,14 @@ private fun screenTitle(route: AppRoute?): String = when (route) {
     AppRoute.Analytics -> "Financial Insights"
     AppRoute.Budgets -> "Monthly Budgets"
     AppRoute.Accounts -> "Accounts & Bills"
-    else -> "Expense Tracker"
+    AppRoute.ShopBaki -> "Shop Credit (Baki)"
+    AppRoute.Notifications -> "Notifications"
+    AppRoute.Profile -> "Profile & Account"
+    AppRoute.Export -> "Export Data"
+    AppRoute.Import -> "Import Data"
+    is AppRoute.ContactDetail -> "Contact Details"
+    is AppRoute.ShopDetail -> "Shop Details"
+    else -> "ExpenseX"
 }
 
 private fun screenIcon(route: AppRoute?): ImageVector = when (route) {
@@ -95,6 +102,13 @@ private fun screenIcon(route: AppRoute?): ImageVector = when (route) {
     AppRoute.Transactions -> Icons.AutoMirrored.Filled.ReceiptLong
     AppRoute.Budgets -> Icons.Default.AccountBalanceWallet
     AppRoute.Accounts -> Icons.Default.AccountBalance
+    AppRoute.ShopBaki -> Icons.Default.Storefront
+    AppRoute.Notifications -> Icons.Default.Notifications
+    AppRoute.Profile -> Icons.Default.Person
+    AppRoute.Export -> Icons.Default.FileUpload
+    AppRoute.Import -> Icons.Default.FileDownload
+    is AppRoute.ContactDetail -> Icons.Default.Person
+    is AppRoute.ShopDetail -> Icons.Default.Storefront
     else -> Icons.Default.Dashboard
 }
 
@@ -165,11 +179,17 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel, deepLink: Uri? = null) {
                     }
                 },
                 navigationIcon = {
-                    if (currentRoute == AppRoute.Budgets || currentRoute == AppRoute.Accounts) {
+                    val isRootTab = currentRoute in listOf(
+                        AppRoute.Dashboard,
+                        AppRoute.Transactions,
+                        AppRoute.Dhaar,
+                        AppRoute.Analytics
+                    )
+                    if (!isRootTab && currentRoute != null) {
                         IconButton(onClick = { backStack.removeLastOrNull() }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back to Home"
+                                contentDescription = "Back"
                             )
                         }
                     }
