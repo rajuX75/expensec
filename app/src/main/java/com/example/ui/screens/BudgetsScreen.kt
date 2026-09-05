@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,9 +32,11 @@ import java.util.Locale
  * shape to ShapeTokens.large, pairs cards with cardBorderStroke, and applies tabular
  * numerals to budget limits and spent figures.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BudgetsScreen(
-    viewModel: ExpenseViewModel
+    viewModel: ExpenseViewModel,
+    onNavigateBack: () -> Unit = {}
 ) {
     val currencySymbol by viewModel.currencySymbol.collectAsState()
     val budgetStatuses by viewModel.budgetStatuses.collectAsState()
@@ -56,6 +59,24 @@ fun BudgetsScreen(
     }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Monthly Budgets",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {

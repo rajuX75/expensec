@@ -42,18 +42,18 @@ fun QuickActionPill(
         color = MaterialTheme.colorScheme.surface,
         border = cardBorderStroke(),
         shadowElevation = 1.dp,
-        modifier = modifier.height(48.dp)
+        modifier = modifier.height(44.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(24.dp)
                     .background(bgColor, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -61,14 +61,17 @@ fun QuickActionPill(
                     imageVector = icon,
                     contentDescription = null,
                     tint = tintColor,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(14.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

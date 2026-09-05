@@ -160,76 +160,78 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel, deepLink: Uri? = null) {
         }
     }
 
+    val isRootTab = currentRoute in listOf(
+        AppRoute.Dashboard,
+        AppRoute.Transactions,
+        AppRoute.Dhaar,
+        AppRoute.Analytics
+    )
+
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
+        // Only the 4 root-tab screens use the global shell top bar.
+        // All sub-screens own their own TopAppBar inside their own Scaffold,
+        // so we must NOT render a second bar here — that was the double-bar bug.
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = screenIcon(currentRoute),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = screenTitle(currentRoute),
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                        )
-                    }
-                },
-                navigationIcon = {
-                    val isRootTab = currentRoute in listOf(
-                        AppRoute.Dashboard,
-                        AppRoute.Transactions,
-                        AppRoute.Dhaar,
-                        AppRoute.Analytics
-                    )
-                    if (!isRootTab && currentRoute != null) {
-                        IconButton(onClick = { backStack.removeLastOrNull() }) {
+            if (isRootTab) {
+                TopAppBar(
+                    scrollBehavior = scrollBehavior,
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                imageVector = screenIcon(currentRoute),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = screenTitle(currentRoute),
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                             )
                         }
-                    }
-                },
-                actions = {
-                    BadgedBox(
-                        badge = {
-                            if (unreadNotificationCount > 0) {
-                                Badge {
-                                    Text(
-                                        text = if (unreadNotificationCount > 99) "99+" else unreadNotificationCount.toString(),
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
+                    },
+                    navigationIcon = {
+                        // Root tabs never show a back button in the global bar
+                    },
+                    actions = {
+                        BadgedBox(
+                            badge = {
+                                if (unreadNotificationCount > 0) {
+                                    Badge {
+                                        Text(
+                                            text = if (unreadNotificationCount > 99) "99+" else unreadNotificationCount.toString(),
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
                                 }
                             }
+                        ) {
+                            IconButton(onClick = {
+                                viewModel.dismissNotificationPopupIfShowing()
+                                backStack.add(AppRoute.Notifications)
+                            }) {
+                                Icon(
+                                    imageVector = if (unreadNotificationCount > 0) Icons.Default.Notifications else Icons.Outlined.Notifications,
+                                    contentDescription = "Notifications",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                    ) {
-                        IconButton(onClick = {
-                            viewModel.dismissNotificationPopupIfShowing()
-                            backStack.add(AppRoute.Notifications)
-                        }) {
+                        IconButton(onClick = { showSettingsSheet = true }) {
                             Icon(
-                                imageVector = if (unreadNotificationCount > 0) Icons.Default.Notifications else Icons.Outlined.Notifications,
-                                contentDescription = "Notifications",
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
-                    IconButton(onClick = { showSettingsSheet = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
-            )
+            }
         },
         bottomBar = {
             NavigationBar(
@@ -320,7 +322,10 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel, deepLink: Uri? = null) {
                         AnalyticsScreen(viewModel = viewModel)
                     }
                     entry<AppRoute.Budgets> {
-                        BudgetsScreen(viewModel = viewModel)
+                        BudgetsScreen(
+                            viewModel = viewModel,
+                            onNavigateBack = { backStack.removeLastOrNull() }
+                        )
                     }
                     entry<AppRoute.Accounts> {
                         AccountsAndBillsScreen(
@@ -329,7 +334,8 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel, deepLink: Uri? = null) {
                                 transactionToEdit = null
                                 initialTransactionType = "TRANSFER"
                                 showAddEditTransactionSheet = true
-                            }
+                            },
+                            onNavigateBack = { backStack.removeLastOrNull() }
                         )
                     }
                     entry<AppRoute.ShopBaki> {

@@ -20,7 +20,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.data.model.TransactionEntity
 import com.example.ui.components.CategoryBadge
 import com.example.ui.components.ReceiptAttachmentPicker
@@ -81,16 +80,16 @@ fun TransactionsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp)
+                        .height(40.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -102,7 +101,7 @@ fun TransactionsScreen(
                             imageVector = Icons.Default.Search,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(
@@ -112,7 +111,7 @@ fun TransactionsScreen(
                             if (searchQuery.isEmpty()) {
                                 Text(
                                     text = "Search note, merchant, tag...",
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                 )
                             }
@@ -120,8 +119,7 @@ fun TransactionsScreen(
                                 value = searchQuery,
                                 onValueChange = { viewModel.setSearchQuery(it) },
                                 singleLine = true,
-                                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 13.sp,
+                                textStyle = MaterialTheme.typography.bodySmall.copy(
                                     color = MaterialTheme.colorScheme.onSurface
                                 ),
                                 cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
@@ -137,7 +135,7 @@ fun TransactionsScreen(
                                     Icons.Default.Clear,
                                     contentDescription = "Clear",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
@@ -146,13 +144,13 @@ fun TransactionsScreen(
 
                 FilledTonalIconButton(
                     onClick = { showFilterSheet = true },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.size(44.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.FilterList,
                         contentDescription = "Filters",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }

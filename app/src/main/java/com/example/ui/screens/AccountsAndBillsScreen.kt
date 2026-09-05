@@ -34,10 +34,12 @@ import java.util.concurrent.TimeUnit
  * "Shadow + 1px subtle border" rule, uses theme-aware containers for bill status badges,
  * and renders financial balances with tabular numerals.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountsAndBillsScreen(
     viewModel: ExpenseViewModel,
-    onOpenTransfer: () -> Unit
+    onOpenTransfer: () -> Unit,
+    onNavigateBack: () -> Unit = {}
 ) {
     val currencySymbol by viewModel.currencySymbol.collectAsState()
     val accountsWithBalances by viewModel.accountsWithBalances.collectAsState()
@@ -53,6 +55,24 @@ fun AccountsAndBillsScreen(
     var selectedBillToEdit by remember { mutableStateOf<BillEntity?>(null) }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Accounts & Bills",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
