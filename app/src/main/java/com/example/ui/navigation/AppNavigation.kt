@@ -236,7 +236,8 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel, deepLink: Uri? = null) {
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp
+                tonalElevation = 3.dp,
+                modifier = Modifier.height(68.dp)
             ) {
                 bottomNavTabs.forEach { tab ->
                     val isSelected = currentRoute == tab.route
