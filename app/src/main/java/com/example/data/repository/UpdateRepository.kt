@@ -126,19 +126,28 @@ class UpdateRepository(
             }
 
             // 2. If still null, fallback to GitHub Releases API
+            var isGitHubFallback = false
             if (updateInfo == null) {
                 updateInfo = fetchGitHubReleaseUpdateInfo()
+                isGitHubFallback = true
             }
 
-            val state = if (updateInfo != null && updateInfo.versionCode > currentCode) {
-                val isMandatory = updateInfo.isMandatory || (currentCode < updateInfo.minSupportedVersionCode)
-                val effectiveInfo = updateInfo.copy(isMandatory = isMandatory)
+            val state = if (updateInfo != null) {
+                val remoteCode = updateInfo.versionCode
+                val localCodeToCompare = if (isGitHubFallback) parseVersionCodeFromTag(currentName) else currentCode
 
-                if (!isManualCheck && !isMandatory && effectiveInfo.versionCode == skippedCode) {
-                    // User opted to skip this version on auto-check
-                    UpdateCheckState.UpToDate(currentName, System.currentTimeMillis())
+                if (remoteCode > localCodeToCompare) {
+                    val isMandatory = updateInfo.isMandatory || (localCodeToCompare < updateInfo.minSupportedVersionCode)
+                    val effectiveInfo = updateInfo.copy(isMandatory = isMandatory)
+
+                    if (!isManualCheck && !isMandatory && effectiveInfo.versionCode == skippedCode) {
+                        // User opted to skip this version on auto-check
+                        UpdateCheckState.UpToDate(currentName, System.currentTimeMillis())
+                    } else {
+                        UpdateCheckState.UpdateAvailable(effectiveInfo)
+                    }
                 } else {
-                    UpdateCheckState.UpdateAvailable(effectiveInfo)
+                    UpdateCheckState.UpToDate(currentName, System.currentTimeMillis())
                 }
             } else {
                 UpdateCheckState.UpToDate(currentName, System.currentTimeMillis())
@@ -220,9 +229,9 @@ class UpdateRepository(
         val parts = clean.split(".")
         return try {
             when (parts.size) {
-                1 -> parts[0].toIntOrNull() ?: 1
-                2 -> (parts[0].toIntOrNull() ?: 0) * 10 + (parts[1].toIntOrNull() ?: 0)
-                3 -> (parts[0].toIntOrNull() ?: 0) * 100 + (parts[1].toIntOrNull() ?: 0) * 10 + (parts[2].toIntOrNull() ?: 0)
+                1 -> (parts[0].toIntOrNull() ?: 1) * 1000000
+                2 -> (parts[0].toIntOrNull() ?: 0) * 1000000 + (parts[1].toIntOrNull() ?: 0) * 1000
+                3 -> (parts[0].toIntOrNull() ?: 0) * 1000000 + (parts[1].toIntOrNull() ?: 0) * 1000 + (parts[2].toIntOrNull() ?: 0)
                 else -> 1
             }
         } catch (e: Exception) {
