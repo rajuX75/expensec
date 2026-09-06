@@ -23,8 +23,8 @@ android {
     // API 24-27 represents <5% of active devices.
     minSdk = 28
     targetSdk = 36
-    versionCode = 28
-    versionName = "1.1.22"
+    versionCode = 29
+    versionName = "1.1.23"
 
     val envCloudName = System.getenv("CLOUDINARY_CLOUD_NAME") ?: ""
     val envApiKey = System.getenv("CLOUDINARY_API_KEY") ?: ""
