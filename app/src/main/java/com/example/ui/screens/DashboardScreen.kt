@@ -78,7 +78,7 @@ fun DashboardScreen(
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
+        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
     ) {
         // Hero Balance Card
         item {

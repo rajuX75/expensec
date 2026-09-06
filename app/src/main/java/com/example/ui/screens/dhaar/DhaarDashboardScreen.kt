@@ -98,7 +98,7 @@ fun DhaarDashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Summary Card
@@ -206,8 +206,9 @@ fun DhaarDashboardScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             val net = summary.netPosition
+                            val sign = if (net > 0.01) "+" else if (net < -0.01) "-" else ""
                             Text(
-                                text = "${if (net > 0) "+" else ""}$currencySymbol${String.format("%,.2f", net)}",
+                                text = "$sign$currencySymbol${String.format("%,.2f", kotlin.math.abs(net))}",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = if (net > 0.01) IncomeGreen else if (net < -0.01) ExpenseRed else MaterialTheme.colorScheme.onSurface
                             )

@@ -53,7 +53,7 @@ fun AnalyticsScreen(
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
+        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
     ) {
         // Time Period Filter Bar & Export Action
         item {
@@ -145,10 +145,12 @@ fun AnalyticsScreen(
                             Text("Savings", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
+                        val savings = summary.netSavings
+                        val sign = if (savings < 0) "-" else ""
                         Text(
-                            text = "$currencySymbol${String.format("%,.0f", summary.netSavings)}",
+                            text = "$sign$currencySymbol${String.format("%,.0f", kotlin.math.abs(savings))}",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (summary.netSavings >= 0) IncomeGreen else ExpenseRed
+                            color = if (savings >= 0) IncomeGreen else ExpenseRed
                         )
                     }
                 }
