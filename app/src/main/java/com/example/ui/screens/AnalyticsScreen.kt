@@ -92,6 +92,11 @@ fun AnalyticsScreen(
 
         // Summary Metric Cards
         item {
+            val shopsWithBalances by viewModel.shopsWithBalances.collectAsState()
+            val totalBaki = remember(shopsWithBalances) {
+                shopsWithBalances.filter { it.currentDue > 0 }.sumOf { it.currentDue }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -115,7 +120,7 @@ fun AnalyticsScreen(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "$currencySymbol${String.format("%,.2f", totalPeriodSpent)}",
+                            text = "$currencySymbol${String.format("%,.0f", totalPeriodSpent)}",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -137,13 +142,39 @@ fun AnalyticsScreen(
                                 Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, tint = IncomeGreen, modifier = Modifier.size(16.dp))
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Net Savings (Mo)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Savings", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "$currencySymbol${String.format("%,.2f", summary.netSavings)}",
+                            text = "$currencySymbol${String.format("%,.0f", summary.netSavings)}",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = if (summary.netSavings >= 0) IncomeGreen else ExpenseRed
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier.size(28.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(androidx.compose.material.icons.outlined.Storefront, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Shop Baki", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "$currencySymbol${String.format("%,.0f", totalBaki)}",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }

@@ -341,10 +341,14 @@ fun DhaarDashboardScreen(
 
                     FilledTonalIconButton(
                         onClick = { showNewContactDialog = true },
-                        modifier = Modifier.size(52.dp),
-                        shape = RoundedCornerShape(14.dp)
+                        modifier = Modifier.size(40.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.PersonAdd, contentDescription = "New Contact")
+                        Icon(
+                            Icons.Default.PersonAdd, 
+                            contentDescription = "New Contact",
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }

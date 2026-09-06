@@ -272,6 +272,7 @@ fun ExpenseAppMain(viewModel: ExpenseViewModel, deepLink: Uri? = null) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
         ) {
             NavDisplay(
                 backStack = backStack,
