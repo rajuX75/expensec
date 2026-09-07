@@ -14,7 +14,7 @@ plugins {
 jacoco { toolVersion = "0.8.12" }
 
 android {
-  namespace = "com.example"
+  namespace = "com.rjx.expensex"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {

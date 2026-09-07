@@ -58,7 +58,7 @@ Date: 2026-09-02 · App: com.rjx.expensex v1.1.17 · minSdk now 28, targetSdk 36
 
 ## Skill #4 — R8 optimization (applied)
 - Removed blanket `-keep com.google.firebase.**` / `-keep com.google.android.gms.**`
-  (rely on BOM consumer rules; app models in `com.example.data.model.**` kept
+  (rely on BOM consumer rules; app models in `com.rjx.expensex.data.model.**` kept
   explicitly for Firestore/Moshi reflection).
 - Removed redundant `-dontwarn` blocks; consolidated duplicate line-number rules.
 - Enabled `android.enableR8.fullMode=true`.

@@ -1,0 +1,406 @@
+package com.rjx.expensex.ui.feature.shopbaki
+
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.rjx.expensex.data.model.ShopWithBalance
+import com.rjx.expensex.ui.theme.ExpenseRed
+import com.rjx.expensex.ui.theme.IncomeGreen
+import com.rjx.expensex.ui.theme.ShapeTokens
+import com.rjx.expensex.ui.theme.cardBorderStroke
+import com.rjx.expensex.ui.theme.financialColors
+import com.rjx.expensex.ui.theme.tabular
+import com.rjx.expensex.ui.viewmodel.ExpenseViewModel
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.math.abs
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShopBakiDashboardScreen(
+    viewModel: ExpenseViewModel,
+    onNavigateBack: () -> Unit = {},
+    onNavigateToShopDetail: (Long) -> Unit
+) {
+    val currencySymbol by viewModel.currencySymbol.collectAsState()
+    val shopsWithBalances by viewModel.shopsWithBalances.collectAsState()
+
+    var searchQuery by remember { mutableStateOf("") }
+    var showAddShopDialog by remember { mutableStateOf(false) }
+    
+    val dateFormat = remember { SimpleDateFormat("dd MMM, yyyy", Locale.getDefault()) }
+
+    // Filter and search
+    val filteredShops = remember(shopsWithBalances, searchQuery) {
+        shopsWithBalances.filter { item ->
+            item.shop.name.contains(searchQuery, ignoreCase = true) ||
+            (item.shop.phoneNumber?.contains(searchQuery) == true)
+        }
+    }
+
+    val totalBaki = remember(shopsWithBalances) {
+        shopsWithBalances.filter { it.currentDue > 0 }.sumOf { it.currentDue }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Shop Baki (Ledger)",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddShopDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Shop")
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Add Shop", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .consumeWindowInsets(innerPadding),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = innerPadding.calculateTopPadding() + 12.dp,
+                end = 16.dp,
+                bottom = innerPadding.calculateBottomPadding() + 80.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Summary Header (clear hierarchy + semantic color zones)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = ShapeTokens.extraLarge,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    border = cardBorderStroke()
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = "Shop Baki Overview",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    "You Owe",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.financialColors.expense
+                                )
+                                Text(
+                                    text = currencySymbol + String.format("%,.2f", kotlin.math.abs(totalBaki)),
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold).tabular(),
+                                    color = MaterialTheme.financialColors.expense
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    "Active Shops",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = shopsWithBalances.size.toString(),
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold).tabular(),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Search Bar
+            item {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    text = "Search shop by name or phone",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = { searchQuery = "" },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Clear",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Shop List
+            if (filteredShops.isEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Outlined.Storefront,
+                                contentDescription = null,
+                                modifier = Modifier.size(56.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = if (searchQuery.isNotEmpty()) "No matching shops found" else "No shops added yet",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(filteredShops, key = { it.shop.id }) { item ->
+                    ShopListItemCard(
+                        item = item,
+                        currencySymbol = currencySymbol,
+                        dateFormat = dateFormat,
+                        onClick = { onNavigateToShopDetail(item.shop.id) }
+                    )
+                }
+            }
+        }
+    }
+
+    if (showAddShopDialog) {
+        AddEditShopDialog(
+            viewModel = viewModel,
+            onDismiss = { showAddShopDialog = false },
+            onShopSaved = { newId ->
+                onNavigateToShopDetail(newId)
+            }
+        )
+    }
+}
+
+@Composable
+fun ShopListItemCard(
+    item: ShopWithBalance,
+    currencySymbol: String,
+    dateFormat: SimpleDateFormat,
+    onClick: () -> Unit
+) {
+    val shop = item.shop
+    val due = item.currentDue
+
+    Card(
+        shape = ShapeTokens.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = cardBorderStroke(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box {
+                    if (!shop.profilePictureUri.isNullOrBlank()) {
+                        coil.compose.AsyncImage(
+                            model = com.rjx.expensex.data.cloud.CloudinaryUrl.thumb(shop.profilePictureUri),
+                            contentDescription = "Profile Picture",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                        )
+                    } else {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(46.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = shop.name.take(1).uppercase(),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
+                    if (shop.isVerified) {
+                        Icon(
+                            Icons.Default.Verified,
+                            contentDescription = "Verified",
+                            tint = Color(0xFF1DA1F2),
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.BottomEnd)
+                                .background(Color.White, CircleShape)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = shop.name,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (item.lastActivityDate != null) {
+                        Text(
+                            text = "Last: ${dateFormat.format(Date(item.lastActivityDate))}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else if (!shop.phoneNumber.isNullOrBlank()) {
+                        Text(
+                            text = shop.phoneNumber,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "$currencySymbol${String.format("%,.2f", abs(due))}",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
+                    color = if (due > 0.01) MaterialTheme.financialColors.expense else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                if (due > 0.01) {
+                    Surface(
+                        shape = ShapeTokens.small,
+                        color = MaterialTheme.financialColors.expenseContainer
+                    ) {
+                        Text(
+                            text = "To Pay",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.financialColors.expense,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                } else {
+                    Surface(
+                        shape = ShapeTokens.small,
+                        color = MaterialTheme.financialColors.incomeContainer
+                    ) {
+                        Text(
+                            text = "Clear",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.financialColors.income,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

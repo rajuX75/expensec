@@ -59,7 +59,7 @@
 ## 🏗️ Architecture & Tech Stack
 
 ```
-com.example/
+com.rjx.expensex/
 ├── data/
 │   ├── cloud/             # FirestoreSyncManager, ShopBakiSyncer, GoogleAuthManager
 │   ├── local/             # Room Database, AppDatabase, DAOs, Entities

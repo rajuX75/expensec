@@ -9,8 +9,8 @@
 
 # --- App data models (Moshi codegen + Firestore POJO reflection) ---
 # Firestore deserializes these via reflection; Moshi adapters are KSP-generated.
--keep class com.example.data.model.** { *; }
--keepclassmembers class com.example.data.model.** { *; }
+-keep class com.rjx.expensex.data.model.** { *; }
+-keepclassmembers class com.rjx.expensex.data.model.** { *; }
 -keep @com.squareup.moshi.JsonClass class * { *; }
 -keepclasseswithmembers class * {
     @com.squareup.moshi.* <methods>;
@@ -28,10 +28,10 @@
 }
 
 # --- Kotlinx Serialization (Navigation 3 routes are @Serializable) ---
--keepclasseswithmembers class com.example.ui.navigation.** {
+-keepclasseswithmembers class com.rjx.expensex.ui.navigation.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
--keepclassmembers class com.example.ui.navigation.** {
+-keepclassmembers class com.rjx.expensex.ui.navigation.** {
     *** INSTANCE;
 }
 -keepattributes *Annotation*, InnerClasses, Signature, EnclosingMethod, Exceptions
