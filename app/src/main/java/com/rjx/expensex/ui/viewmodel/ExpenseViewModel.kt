@@ -42,11 +42,14 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     )
     private val userPrefs = UserPreferencesRepository(application)
     val importExportRepo = ImportExportRepository(application, database, userPrefs)
+    val googleAuthManager = GoogleAuthManager(application, userPrefs)
     val cloudBackupRepo = CloudBackupRepository(
         importExportRepository = importExportRepo,
-        userPreferencesRepository = userPrefs
+        userPreferencesRepository = userPrefs,
+        // Silently refresh the Drive access token when it expires (~1h) so
+        // backups/restores don't start failing with HTTP 401 after sign-in.
+        driveTokenRefresher = { googleAuthManager.tryRefreshDriveAccessToken() }
     )
-    val googleAuthManager = GoogleAuthManager(application, userPrefs)
     val firestoreSyncManager = com.rjx.expensex.data.cloud.FirestoreSyncManager(application, database, userPrefs)
     val firebaseConfigManager = com.rjx.expensex.data.cloud.FirebaseConfigManager(application, viewModelScope)
     val updateRepository = com.rjx.expensex.data.repository.UpdateRepository(application, userPrefs, firebaseConfigManager)

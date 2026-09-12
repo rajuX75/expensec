@@ -25,7 +25,12 @@ data class CloudBackupResult(
 class CloudBackupRepository(
     private val driveClient: DriveClient = GoogleDriveRestClient(),
     private val importExportRepository: ImportExportRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    // BUG FIX (Drive token expiry): optional silent token refresher. Drive access
+    // tokens expire after ~1 hour; when a Drive call fails with HTTP 401 the stored
+    // token is refreshed once and the call retried, so backups/syncs keep working
+    // instead of failing until the user re-authorizes manually.
+    private val driveTokenRefresher: (suspend () -> String?)? = null
 ) {
 
     private fun getValidToken(explicitToken: String?): String {
@@ -39,18 +44,42 @@ class CloudBackupRepository(
         return token
     }
 
+    private fun isUnauthorized(e: Throwable): Boolean =
+        e is java.io.IOException && e.message?.contains("HTTP 401") == true
+
+    /**
+     * Runs [block] with the current token; if Drive answers HTTP 401 (expired token)
+     * the stored token is cleared, a fresh one is requested via [driveTokenRefresher],
+     * and [block] is retried exactly once.
+     */
+    private suspend fun <T> withDriveAuth(explicitToken: String?, block: suspend (String) -> T): T {
+        val firstToken = getValidToken(explicitToken)
+        return try {
+            block(firstToken)
+        } catch (e: Throwable) {
+            val refresher = driveTokenRefresher
+            if (!isUnauthorized(e) || refresher == null) throw e
+            // Drop the dead token so nothing else keeps using it.
+            userPreferencesRepository.setDriveAccessToken(null)
+            val freshToken = refresher()
+                ?: throw IllegalStateException("Google Drive authorization expired. Please sign in with Google again.")
+            block(freshToken)
+        }
+    }
+
     /**
      * Checks if a backup exists in Google Drive's appDataFolder and parses its metadata.
      */
     suspend fun getCloudBackupInfo(explicitToken: String? = null): Result<CloudBackupInfo?> = withContext(Dispatchers.IO) {
         runCatching {
-            val token = getValidToken(explicitToken)
-            val metadata = driveClient.getAppBackupMetadata(token) ?: return@runCatching null
-            CloudBackupInfo(
-                fileId = metadata.id,
-                modifiedTime = metadata.modifiedTime,
-                sizeBytes = metadata.sizeBytes
-            )
+            withDriveAuth(explicitToken) { token ->
+                val metadata = driveClient.getAppBackupMetadata(token) ?: return@withDriveAuth null
+                CloudBackupInfo(
+                    fileId = metadata.id,
+                    modifiedTime = metadata.modifiedTime,
+                    sizeBytes = metadata.sizeBytes
+                )
+            }
         }
     }
 
@@ -59,13 +88,14 @@ class CloudBackupRepository(
      */
     suspend fun fetchBackupPreviewFromCloud(explicitToken: String? = null): Result<AppBackup> = withContext(Dispatchers.IO) {
         runCatching {
-            val token = getValidToken(explicitToken)
-            val metadata = driveClient.getAppBackupMetadata(token)
-                ?: throw IllegalStateException("No backup file found in Google Drive appDataFolder.")
+            withDriveAuth(explicitToken) { token ->
+                val metadata = driveClient.getAppBackupMetadata(token)
+                    ?: throw IllegalStateException("No backup file found in Google Drive appDataFolder.")
 
-            val jsonContent = driveClient.downloadAppBackup(token, metadata.id)
-            val backupResult = BackupSerializer.importFromJson(jsonContent)
-            backupResult.getOrThrow()
+                val jsonContent = driveClient.downloadAppBackup(token, metadata.id)
+                val backupResult = BackupSerializer.importFromJson(jsonContent)
+                backupResult.getOrThrow()
+            }
         }
     }
 
@@ -78,8 +108,7 @@ class CloudBackupRepository(
         forceOverwrite: Boolean = false
     ): Result<CloudBackupResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val token = getValidToken(explicitToken)
-
+            withDriveAuth(explicitToken) { token ->
             // Step 1: Check existing cloud file and conflict detection
             val existingMetadata = driveClient.getAppBackupMetadata(token)
             val lastLocalBackupTime = userPreferencesRepository.lastCloudBackupTime.value
@@ -115,6 +144,7 @@ class CloudBackupRepository(
                 timestamp = uploadedMeta.modifiedTime,
                 bytesUploaded = bytesCount
             )
+            }
         }.onFailure { error ->
             if (error !is CloudConflictException) {
                 userPreferencesRepository.setCloudBackupResult(
@@ -133,22 +163,23 @@ class CloudBackupRepository(
         mode: ImportMode
     ): Result<ImportResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val token = getValidToken(explicitToken)
-            val metadata = driveClient.getAppBackupMetadata(token)
-                ?: throw IllegalStateException("No backup found in Google Drive.")
+            withDriveAuth(explicitToken) { token ->
+                val metadata = driveClient.getAppBackupMetadata(token)
+                    ?: throw IllegalStateException("No backup found in Google Drive.")
 
-            val jsonContent = driveClient.downloadAppBackup(token, metadata.id)
-            val backup = BackupSerializer.importFromJson(jsonContent).getOrThrow()
+                val jsonContent = driveClient.downloadAppBackup(token, metadata.id)
+                val backup = BackupSerializer.importFromJson(jsonContent).getOrThrow()
 
-            // Run import inside atomic Room transaction (with automatic safety backup if REPLACE mode)
-            val importResult = importExportRepository.importBackup(backup, mode).getOrThrow()
+                // Run import inside atomic Room transaction (with automatic safety backup if REPLACE mode)
+                val importResult = importExportRepository.importBackup(backup, mode).getOrThrow()
 
-            userPreferencesRepository.setCloudBackupResult(
-                status = "SUCCESS",
-                timestamp = System.currentTimeMillis()
-            )
+                userPreferencesRepository.setCloudBackupResult(
+                    status = "SUCCESS",
+                    timestamp = System.currentTimeMillis()
+                )
 
-            importResult
+                importResult
+            }
         }.onFailure { error ->
             userPreferencesRepository.setCloudBackupResult(
                 status = "FAILED",

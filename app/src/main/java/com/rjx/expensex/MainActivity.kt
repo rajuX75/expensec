@@ -118,8 +118,21 @@ class MainActivity : ComponentActivity() {
                     "App version changed: $lastVersionCode -> $currentVersionCode. Running upgrade housekeeping."
                 )
                 try {
-                    androidx.work.WorkManager.getInstance(this)
-                        .cancelUniqueWork("CloudinaryImageUpload")
+                    val wm = androidx.work.WorkManager.getInstance(this)
+                    wm.cancelUniqueWork("CloudinaryImageUpload")
+                    // Also cancel the auto-backup periodic worker — its serialized
+                    // state from the older version may be incompatible with the new
+                    // worker code. It is rescheduled from the saved settings below.
+                    wm.cancelUniqueWork(com.rjx.expensex.data.work.BackupWorker.WORK_NAME)
+                    // Reschedule the backup worker from persisted settings so the
+                    // user's auto-backup preference survives the upgrade.
+                    val prefsRepo = com.rjx.expensex.data.repository.UserPreferencesRepository(this)
+                    val frequency = prefsRepo.autoBackupFrequency.value
+                    if (!frequency.equals("OFF", ignoreCase = true)) {
+                        com.rjx.expensex.data.work.BackupWorker.schedule(
+                            this, frequency, prefsRepo.autoBackupWifiOnly.value
+                        )
+                    }
                 } catch (e: Exception) {
                     android.util.Log.w("MainActivity", "Could not cancel stale work: ${e.message}")
                 }

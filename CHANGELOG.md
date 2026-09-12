@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.25] — 2026-09-12
+
+Xiaomi/MIUI sign-in fix, Drive token auto-refresh, and upgrade housekeeping.
+
+### Fixed
+- **Xiaomi / MIUI Google Sign-In popup not appearing**: The Google Drive backup screen (Settings → Cloud Backup) was the only sign-in entry point that did not wire up the legacy `GoogleSignIn` account-picker fallback. On Xiaomi/MIUI/HyperOS devices, MIUI blocks the Credential Manager bottom-sheet, so tapping "Sign in with Google Drive" showed nothing and just returned an error. The Drive sign-in now falls back to the classic full-screen Google account picker, matching the behavior of the Firebase sync card.
+- **MIUI detection too narrow**: The Xiaomi-specific error guidance only checked `Build.MANUFACTURER == "xiaomi"`, missing Redmi, POCO, and some HyperOS builds. Detection now also checks `Build.BRAND` and `Build.MODEL`.
+- **Drive backups silently failing ~1 hour after sign-in**: The stored `drive.appdata` access token expires hourly, but nothing refreshed it. A silent token refresh is now attempted once whenever a Drive call returns HTTP 401, and the operation is retried — so cloud backups/restores and scheduled background backups keep working instead of failing until manual re-authorization.
+- **Stale auto-backup worker surviving app upgrades**: `handleAppUpgrade()` cancelled only the Cloudinary upload worker, leaving the periodic `BackupWorker` from the old version in place. Upgrade housekeeping now cancels it too and reschedules from the user's saved settings.
+
 ## [1.1.6] — 2026-08-25
 
 Direct Cloudinary upload flow, realtime Firebase sync, and configurable in-app credentials.

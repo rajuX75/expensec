@@ -70,9 +70,13 @@ class BackupWorker(
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val database = AppDatabase.getDatabase(applicationContext, scope)
         val importExportRepo = ImportExportRepository(applicationContext, database, userPrefs)
+        val googleAuthManager = com.rjx.expensex.data.cloud.GoogleAuthManager(applicationContext, userPrefs)
         val cloudBackupRepo = CloudBackupRepository(
             importExportRepository = importExportRepo,
-            userPreferencesRepository = userPrefs
+            userPreferencesRepository = userPrefs,
+            // Refresh the (hourly-expiring) Drive access token if a background
+            // backup hits HTTP 401, so scheduled backups don't silently fail.
+            driveTokenRefresher = { googleAuthManager.tryRefreshDriveAccessToken() }
         )
 
         return try {

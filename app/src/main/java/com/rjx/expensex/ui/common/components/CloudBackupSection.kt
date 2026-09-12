@@ -64,6 +64,33 @@ fun CloudBackupSection(
         }
     }
 
+    // Legacy GoogleSignIn launcher — fallback for Xiaomi / MIUI devices where the
+    // Credential Manager bottom-sheet is blocked by MIUI battery / security
+    // restrictions, so the Google sign-in popup never appears. When Credential
+    // Manager fails, CloudDelegate hands us a classic GoogleSignIn intent that
+    // always shows the full-screen account picker.
+    val legacySignInLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        viewModel.handleLegacySignInResult(result.data) { signInResult ->
+            signInResult.onSuccess {
+                // Sign-in completed via the legacy picker — continue with Drive consent.
+                authorizeDriveAfterSignIn(
+                    viewModel = viewModel,
+                    context = context,
+                    onMessage = onShowMessage,
+                    onConsentRequired = { sender, _ ->
+                        driveConsentLauncher.launch(
+                            IntentSenderRequest.Builder(sender).build()
+                        )
+                    }
+                )
+            }.onFailure { err ->
+                onShowMessage("Sign-in: ${err.localizedMessage ?: "Failed"}")
+            }
+        }
+    }
+
     val googleAccountEmail by viewModel.googleAccountEmail.collectAsState()
     val driveAccessToken by viewModel.googleDriveAccessToken.collectAsState()
     val lastCloudBackupTime by viewModel.lastCloudBackupTime.collectAsState()
@@ -165,7 +192,15 @@ fun CloudBackupSection(
 
                     Button(
                         onClick = {
-                            viewModel.signInGoogle(context) { result ->
+                            viewModel.signInGoogle(
+                                activityContext = context,
+                                onFallbackToLegacy = { intent ->
+                                    // Credential Manager failed (typically on Xiaomi/MIUI
+                                    // where its bottom-sheet never appears) — fall back to
+                                    // the classic Google account picker.
+                                    legacySignInLauncher.launch(intent)
+                                }
+                            ) { result ->
                                 if (result.isSuccess) {
                                     authorizeDriveAfterSignIn(
                                         viewModel = viewModel,

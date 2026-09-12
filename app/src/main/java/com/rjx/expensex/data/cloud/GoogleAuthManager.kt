@@ -321,6 +321,37 @@ class GoogleAuthManager(
             }
         }
 
+    /**
+     * BUG FIX (Drive token expiry): the stored `drive.appdata` access token expires
+     * after ~1 hour. This silently re-authorizes against the already-signed-in Google
+     * account and, on success, persists a fresh token. Returns null when a token
+     * cannot be obtained silently (e.g. consent is required again or there is no
+     * signed-in account), in which case the caller must fall back to interactive
+     * re-authorization. Never throws.
+     */
+    suspend fun tryRefreshDriveAccessToken(): String? = withContext(Dispatchers.Main) {
+        try {
+            val request = AuthorizationRequest.builder()
+                .setRequestedScopes(listOf(Scope(DRIVE_APPDATA_SCOPE)))
+                .build()
+            val result: AuthorizationResult =
+                Identity.getAuthorizationClient(context).authorize(request).await()
+
+            val token = result.accessToken
+            if (!result.hasResolution() && !token.isNullOrBlank()) {
+                userPreferencesRepository.setDriveAccessToken(token)
+                Log.d(TAG, "Drive access token refreshed silently")
+                token
+            } else {
+                Log.d(TAG, "Silent Drive token refresh unavailable (consent required)")
+                null
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Silent Drive token refresh failed", t)
+            null
+        }
+    }
+
     suspend fun signOut(): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             try {
@@ -368,9 +399,16 @@ internal fun Throwable.toReadableSignInError(): Exception {
     val chain = generateSequence(this) { it.cause }.toList()
 
     if (this is NoCredentialException || chain.any { it is NoCredentialException }) {
-        // Check if running on Xiaomi / MIUI where Credential Manager is commonly blocked
-        val isMiui = !android.os.Build.MANUFACTURER.isNullOrBlank() &&
-            android.os.Build.MANUFACTURER.lowercase().contains("xiaomi")
+        // Check if running on Xiaomi / MIUI / HyperOS where Credential Manager is
+        // commonly blocked. MANUFACTURER is "Xiaomi" for Xiaomi/Redmi/POCO phones,
+        // but we also check BRAND and MODEL because some HyperOS builds report a
+        // different manufacturer string.
+        val manu = android.os.Build.MANUFACTURER.orEmpty().lowercase()
+        val brand = android.os.Build.BRAND.orEmpty().lowercase()
+        val model = android.os.Build.MODEL.orEmpty().lowercase()
+        val isMiui = manu.contains("xiaomi") || brand.contains("xiaomi") ||
+            brand.contains("redmi") || brand.contains("poco") ||
+            model.contains("redmi") || model.contains("poco")
         return if (isMiui) {
             Exception(
                 "Google Sign-In could not open on this Xiaomi device. " +
