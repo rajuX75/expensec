@@ -6,19 +6,22 @@ import {
   Settings, 
   Users, 
   Activity,
-  Wallet
+  Wallet,
+  Bug,
 } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Notifications from './pages/Notifications';
 import AppConfig from './pages/AppConfig';
 import UserLogs from './pages/UserLogs';
+import Feedback from './pages/Feedback';
 
 function Sidebar() {
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Users & Logs', path: '/users', icon: Users },
-    { name: 'Notifications', path: '/notifications', icon: Bell },
-    { name: 'App Config', path: '/config', icon: Settings },
+    { name: 'Dashboard',    path: '/',          icon: LayoutDashboard },
+    { name: 'Users & Logs', path: '/users',      icon: Users },
+    { name: 'Feedback',     path: '/feedback',   icon: Bug },
+    { name: 'Notifications',path: '/notifications', icon: Bell },
+    { name: 'App Config',   path: '/config',     icon: Settings },
   ];
 
   return (
@@ -98,6 +101,7 @@ function App() {
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/config" element={<AppConfig />} />
                 <Route path="/users" element={<UserLogs />} />
+                <Route path="/feedback" element={<Feedback />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>

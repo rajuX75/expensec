@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class CloudDelegate(
@@ -140,14 +141,18 @@ class CloudDelegate(
             val result = googleAuthManager.handleLegacySignInResult(data)
             _isCloudSyncing.value = false
             _cloudSyncMessage.value = null
-            onResult(result)
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
         }
     }
 
     fun authorizeDrive(activityContext: Context, onResult: (DriveAuthorizeResult) -> Unit) {
         viewModelScope.launch {
             val result = googleAuthManager.authorizeDrive(activityContext)
-            onResult(result)
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
         }
     }
 
@@ -155,7 +160,9 @@ class CloudDelegate(
         viewModelScope.launch {
             googleAuthManager.signOut()
             BackupWorker.schedule(application, "OFF", true)
-            onComplete()
+            withContext(Dispatchers.Main) {
+                onComplete()
+            }
         }
     }
 
@@ -175,7 +182,9 @@ class CloudDelegate(
                 _cloudConflict.value = error
             }
 
-            onResult(result)
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
         }
     }
 
@@ -190,7 +199,9 @@ class CloudDelegate(
             _isCloudSyncing.value = false
             _cloudSyncMessage.value = null
             loadSafetyBackups()
-            onResult(result)
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
         }
     }
 
@@ -201,7 +212,9 @@ class CloudDelegate(
             val result = cloudBackupRepo.fetchBackupPreviewFromCloud()
             _isCloudSyncing.value = false
             _cloudSyncMessage.value = null
-            onResult(result)
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
         }
     }
 
@@ -218,9 +231,13 @@ class CloudDelegate(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val result = firestoreSyncManager.syncAll(uid)
-                onResult(result)
+                withContext(Dispatchers.Main) {
+                    onResult(result)
+                }
             } catch (e: Exception) {
-                onResult(Result.failure(e))
+                withContext(Dispatchers.Main) {
+                    onResult(Result.failure(e))
+                }
             }
         }
     }

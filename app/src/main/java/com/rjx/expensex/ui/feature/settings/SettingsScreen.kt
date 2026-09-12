@@ -238,7 +238,11 @@ fun SettingsScreen(
         item {
             com.rjx.expensex.ui.common.components.FirebaseSyncCard(
                 viewModel = viewModel,
-                onShowMessage = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
+                onShowMessage = { msg ->
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    }
+                }
             )
         }
 
