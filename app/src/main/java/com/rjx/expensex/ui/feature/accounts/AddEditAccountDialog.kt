@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.accounts
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -39,7 +40,7 @@ fun AddEditAccountDialog(
     var name by remember { mutableStateOf(initialAccount?.name ?: "") }
     var accountType by remember { mutableStateOf(initialAccount?.type ?: "BANK") }
     var initialBalanceText by remember {
-        mutableStateOf(initialAccount?.let { String.format(Locale.US, "%.2f", it.openingBalance) } ?: "0.00")
+        mutableStateOf(initialAccount?.let { AmountFormatter.format(it.openingBalance) } ?: "0.00")
     }
     var selectedColor by remember {
         mutableStateOf(initialAccount?.colorHex ?: "#00875A")

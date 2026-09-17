@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.shopbaki
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.clickable
@@ -136,7 +137,7 @@ fun ShopBakiDashboardScreen(
                                     color = MaterialTheme.financialColors.expense
                                 )
                                 Text(
-                                    text = currencySymbol + String.format("%,.2f", kotlin.math.abs(totalBaki)),
+                                    text = currencySymbol + AmountFormatter.format(kotlin.math.abs(totalBaki)),
                                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold).tabular(),
                                     color = MaterialTheme.financialColors.expense
                                 )
@@ -370,7 +371,7 @@ fun ShopListItemCard(
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "$currencySymbol${String.format("%,.2f", abs(due))}",
+                    text = "$currencySymbol${AmountFormatter.format(abs(due))}",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                     color = if (due > 0.01) MaterialTheme.financialColors.expense else MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.dhaar
 
+import com.rjx.expensex.core.util.AmountFormatter
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -145,7 +146,7 @@ fun ContactDetailScreen(
                         // SMS Reminder
                         IconButton(onClick = {
                             val reminderMsg = if (netBalance > 0.01) {
-                                "Hello ${contact.name}, a polite reminder about the remaining balance of $currencySymbol${String.format("%.2f", netBalance)}. Thank you!"
+                                "Hello ${contact.name}, a polite reminder about the remaining balance of $currencySymbol${AmountFormatter.format(netBalance)}. Thank you!"
                             } else {
                                 "Hello ${contact.name}, checking in on our pending ledger balance. Thanks!"
                             }
@@ -245,7 +246,7 @@ fun ContactDetailScreen(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
-                            text = "$currencySymbol${String.format("%,.2f", abs(netBalance))}",
+                            text = "$currencySymbol${AmountFormatter.format(abs(netBalance))}",
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 36.sp
@@ -270,17 +271,17 @@ fun ContactDetailScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Total Lent", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("$currencySymbol${String.format("%,.0f", givenSum)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = IncomeGreen)
+                                Text("$currencySymbol${AmountFormatter.format(givenSum)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = IncomeGreen)
                             }
                             HorizontalDivider(modifier = Modifier.height(24.dp).width(1.dp), color = MaterialTheme.colorScheme.outlineVariant)
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Total Borrowed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("$currencySymbol${String.format("%,.0f", receivedSum)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = ExpenseRed)
+                                Text("$currencySymbol${AmountFormatter.format(receivedSum)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = ExpenseRed)
                             }
                             HorizontalDivider(modifier = Modifier.height(24.dp).width(1.dp), color = MaterialTheme.colorScheme.outlineVariant)
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Settled", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("$currencySymbol${String.format("%,.0f", settledSum)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
+                                Text("$currencySymbol${AmountFormatter.format(settledSum)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
@@ -594,7 +595,7 @@ fun DhaarEntryCard(
                 // Amount & Menu
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "${if (isGiven) "+" else if (isReceived) "-" else ""}$currencySymbol${String.format("%,.2f", entry.amount)}",
+                        text = "${if (isGiven) "+" else if (isReceived) "-" else ""}$currencySymbol${AmountFormatter.format(entry.amount)}",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = when {
                             isGiven -> IncomeGreen

@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.dhaar
 
+import com.rjx.expensex.core.util.AmountFormatter
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.net.Uri
@@ -63,7 +64,7 @@ fun AddEditDhaarDialog(
         mutableStateOf(initialEntry?.type ?: preselectedType ?: "GIVEN")
     }
     var amountText by remember {
-        mutableStateOf(initialEntry?.let { String.format(Locale.US, "%.2f", it.amount) } ?: "")
+        mutableStateOf(initialEntry?.let { AmountFormatter.format(it.amount) } ?: "")
     }
     var note by remember { mutableStateOf(initialEntry?.note ?: "") }
     var selectedDate by remember { mutableStateOf(initialEntry?.date ?: System.currentTimeMillis()) }

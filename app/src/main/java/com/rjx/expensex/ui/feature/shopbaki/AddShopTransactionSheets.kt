@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.shopbaki
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -130,7 +131,7 @@ fun AddBakiEntrySheet(
             }
             
             Text(
-                text = "Total: ${String.format("%,.2f", totalAmount)}",
+                text = "Total: ${AmountFormatter.format(totalAmount)}",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
             )

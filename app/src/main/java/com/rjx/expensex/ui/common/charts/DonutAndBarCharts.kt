@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.common.charts
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -128,7 +129,7 @@ fun CategoryDonutChart(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "$currencySymbol${String.format("%,.2f", displayAmount)}",
+                            text = "$currencySymbol${AmountFormatter.format(displayAmount)}",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -184,7 +185,7 @@ fun CategoryDonutChart(
                                     modifier = Modifier.padding(end = 12.dp)
                                 )
                                 Text(
-                                    text = "$currencySymbol${String.format("%,.2f", cat.amount)}",
+                                    text = "$currencySymbol${AmountFormatter.format(cat.amount)}",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -341,8 +342,8 @@ fun BudgetProgressBar(
             )
             val remaining = limitAmount - spentAmount
             Text(
-                text = if (remaining >= 0) "$currencySymbol${String.format("%,.2f", remaining)} left"
-                else "$currencySymbol${String.format("%,.2f", -remaining)} over budget",
+                text = if (remaining >= 0) "$currencySymbol${AmountFormatter.format(remaining)} left"
+                else "$currencySymbol${AmountFormatter.format(-remaining)} over budget",
                 style = MaterialTheme.typography.labelMedium,
                 color = if (remaining >= 0) MaterialTheme.colorScheme.onSurfaceVariant else ExpenseRed
             )

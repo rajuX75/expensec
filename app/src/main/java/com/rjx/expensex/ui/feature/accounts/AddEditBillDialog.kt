@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.accounts
 
+import com.rjx.expensex.core.util.AmountFormatter
 import android.app.DatePickerDialog
 import android.widget.DatePicker
 import androidx.compose.foundation.layout.*
@@ -39,7 +40,7 @@ fun AddEditBillDialog(
 
     var title by remember { mutableStateOf(initialBill?.title ?: "") }
     var amountText by remember {
-        mutableStateOf(initialBill?.let { String.format(Locale.US, "%.2f", it.amount) } ?: "")
+        mutableStateOf(initialBill?.let { AmountFormatter.format(it.amount) } ?: "")
     }
     var dueDate by remember { mutableStateOf(initialBill?.dueDate ?: System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000L)) }
     var frequency by remember { mutableStateOf(initialBill?.frequency ?: "MONTHLY") }

@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.budgets
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,7 +47,7 @@ fun AddEditBudgetDialog(
     }
 
     var limitAmountText by remember {
-        mutableStateOf(initialBudget?.let { String.format(Locale.US, "%.2f", it.amountLimit) } ?: "")
+        mutableStateOf(initialBudget?.let { AmountFormatter.format(it.amountLimit) } ?: "")
     }
 
     var alertThreshold by remember {

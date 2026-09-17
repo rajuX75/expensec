@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.transactions
 
+import com.rjx.expensex.core.util.AmountFormatter
 import android.app.DatePickerDialog
 import android.widget.DatePicker
 import androidx.compose.foundation.background
@@ -64,7 +65,7 @@ fun AddEditTransactionSheet(
     }
 
     var amountText by remember {
-        mutableStateOf(initialTransaction?.let { String.format(Locale.US, "%.2f", it.amount) } ?: "")
+        mutableStateOf(initialTransaction?.let { AmountFormatter.format(it.amount) } ?: "")
     }
 
     val filteredCategories = remember(allCategories, selectedType) {

@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.dhaar
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -150,7 +151,7 @@ fun DhaarDashboardScreen(
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
-                                        text = "$currencySymbol${String.format("%,.2f", summary.totalYouWillGet)}",
+                                        text = "$currencySymbol${AmountFormatter.format(summary.totalYouWillGet)}",
                                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold).tabular(),
                                         color = MaterialTheme.financialColors.income
                                     )
@@ -180,7 +181,7 @@ fun DhaarDashboardScreen(
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
-                                        text = "$currencySymbol${String.format("%,.2f", summary.totalYouWillPay)}",
+                                        text = "$currencySymbol${AmountFormatter.format(summary.totalYouWillPay)}",
                                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold).tabular(),
                                         color = MaterialTheme.financialColors.expense
                                     )
@@ -208,7 +209,7 @@ fun DhaarDashboardScreen(
                             val net = summary.netPosition
                             val sign = if (net > 0.01) "+" else if (net < -0.01) "-" else ""
                             Text(
-                                text = "$sign$currencySymbol${String.format("%,.2f", kotlin.math.abs(net))}",
+                                text = "$sign$currencySymbol${AmountFormatter.format(kotlin.math.abs(net))}",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = if (net > 0.01) IncomeGreen else if (net < -0.01) ExpenseRed else MaterialTheme.colorScheme.onSurface
                             )
@@ -264,7 +265,7 @@ fun DhaarDashboardScreen(
                                         )
                                     }
                                     Text(
-                                        text = "$currencySymbol${String.format("%,.2f", reminder.entry.amount)}",
+                                        text = "$currencySymbol${AmountFormatter.format(reminder.entry.amount)}",
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                         color = if (reminder.entry.type == "GIVEN") IncomeGreen else ExpenseRed
                                     )
@@ -544,7 +545,7 @@ fun ContactListItemCard(
             // Balance & Status
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "$currencySymbol${String.format("%,.2f", abs(netBalance))}",
+                    text = "$currencySymbol${AmountFormatter.format(abs(netBalance))}",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                     color = when {
                         isTheyOweYou -> MaterialTheme.financialColors.income

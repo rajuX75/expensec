@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.common.components
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -201,7 +202,7 @@ fun TransactionItemCard(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "$amountPrefix$currencySymbol${String.format(Locale.US, "%,.2f", transaction.amount)}",
+                    text = "$amountPrefix$currencySymbol${AmountFormatter.format(transaction.amount)}",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                     color = amountColor
                 )

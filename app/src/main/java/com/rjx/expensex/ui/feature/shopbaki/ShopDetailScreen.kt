@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.shopbaki
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -204,7 +205,7 @@ fun ShopDetailScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "$currencySymbol${String.format("%,.2f", abs(currentDue))}",
+                        text = "$currencySymbol${AmountFormatter.format(abs(currentDue))}",
                         style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                         color = if (currentDue > 0.01) ExpenseRed else IncomeGreen
                     )
@@ -327,7 +328,7 @@ fun TimelineItemCard(
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
             )
             val subText = if (!isPayment && entry.quantity != null && entry.unitPriceAtPurchase != null) {
-                "${entry.quantity} x $currencySymbol${String.format("%,.2f", entry.unitPriceAtPurchase)}"
+                "${entry.quantity} x $currencySymbol${AmountFormatter.format(entry.unitPriceAtPurchase)}"
             } else {
                 entry.note ?: if (isPayment) "Paid to shop" else "Purchase"
             }
@@ -345,12 +346,12 @@ fun TimelineItemCard(
         
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                text = "${if (isPayment) "-" else "+"}$currencySymbol${String.format("%,.2f", entry.amount)}",
+                text = "${if (isPayment) "-" else "+"}$currencySymbol${AmountFormatter.format(entry.amount)}",
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                 color = if (isPayment) IncomeGreen else ExpenseRed
             )
             Text(
-                text = "Bal: $currencySymbol${String.format("%,.2f", item.runningBalance)}",
+                text = "Bal: $currencySymbol${AmountFormatter.format(item.runningBalance)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

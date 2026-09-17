@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.dashboard
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -129,7 +130,7 @@ fun DashboardScreen(
 
                         // Large Total Balance Text (Modular Scale + Tabular Numerals)
                         Text(
-                            text = "$currencySymbol${String.format(Locale.US, "%,.2f", summary.totalBalance)}",
+                            text = "$currencySymbol${AmountFormatter.format(summary.totalBalance)}",
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = FontWeight.Bold
                             ).tabular(),
@@ -174,7 +175,7 @@ fun DashboardScreen(
                                             color = Color.White.copy(alpha = 0.7f)
                                         )
                                         Text(
-                                            text = "$currencySymbol${String.format(Locale.US, "%,.0f", summary.thisMonthIncome)}",
+                                            text = "$currencySymbol${AmountFormatter.format(summary.thisMonthIncome)}",
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                                             color = Color.White,
                                             maxLines = 1
@@ -214,7 +215,7 @@ fun DashboardScreen(
                                             color = Color.White.copy(alpha = 0.7f)
                                         )
                                         Text(
-                                            text = "$currencySymbol${String.format(Locale.US, "%,.0f", summary.thisMonthExpense)}",
+                                            text = "$currencySymbol${AmountFormatter.format(summary.thisMonthExpense)}",
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                                             color = Color.White,
                                             maxLines = 1
@@ -279,9 +280,9 @@ fun DashboardScreen(
                 // Bento Card: Debts & Loans (Dhaar)
                 val netPosition = dhaarSummary.netPosition
                 val dhaarValue = if (netPosition >= 0) {
-                    "+$currencySymbol${String.format("%,.0f", netPosition)}"
+                    "+$currencySymbol${AmountFormatter.format(netPosition)}"
                 } else {
-                    "-$currencySymbol${String.format("%,.0f", kotlin.math.abs(netPosition))}"
+                    "-$currencySymbol${AmountFormatter.format(kotlin.math.abs(netPosition))}"
                 }
                 val dhaarColor = if (netPosition >= 0) IncomeGreen else ExpenseRed
 
@@ -305,7 +306,7 @@ fun DashboardScreen(
                     iconBg = Color(0xFFF59E0B).copy(alpha = 0.15f),
                     title = "Shop Baki",
                     subtitle = "${shopsWithBalances.count { it.currentDue > 0 }} active shops",
-                    value = "$currencySymbol${String.format("%,.0f", totalShopBaki)}",
+                    value = "$currencySymbol${AmountFormatter.format(totalShopBaki)}",
                     valueLabel = "Total owed to shops",
                     onClick = onNavigateToShopBaki
                 )
@@ -326,7 +327,7 @@ fun DashboardScreen(
                     iconBg = MaterialTheme.colorScheme.primaryContainer,
                     title = "Accounts",
                     subtitle = "${allAccounts.size} Wallets",
-                    value = "$currencySymbol${String.format("%,.0f", summary.totalBalance)}",
+                    value = "$currencySymbol${AmountFormatter.format(summary.totalBalance)}",
                     valueLabel = "Total balance",
                     onClick = onNavigateToAccounts
                 )
@@ -352,7 +353,7 @@ fun DashboardScreen(
                     title = "Budgets",
                     subtitle = if (overallBudgetStatus?.isOverBudget == true) "Over limit" else "Monthly plan",
                     value = budgetText,
-                    valueLabel = if (overallBudgetStatus != null) "of $currencySymbol${String.format("%,.0f", overallBudgetStatus.budget.amountLimit)}" else "Track spending",
+                    valueLabel = if (overallBudgetStatus != null) "of $currencySymbol${AmountFormatter.format(overallBudgetStatus.budget.amountLimit)}" else "Track spending",
                     onClick = onNavigateToBudgets
                 )
             }
@@ -380,7 +381,7 @@ fun DashboardScreen(
                 // Bento Card: Upcoming Bills
                 val hasBills = upcomingUnpaidBills.isNotEmpty()
                 val nextBill = upcomingUnpaidBills.firstOrNull()
-                val billValue = if (nextBill != null) "$currencySymbol${String.format("%,.0f", nextBill.amount)}" else "All clear"
+                val billValue = if (nextBill != null) "$currencySymbol${AmountFormatter.format(nextBill.amount)}" else "All clear"
                 val billLabel = if (nextBill != null) nextBill.title else "No due bills"
 
                 BentoCard(
@@ -443,7 +444,7 @@ fun DashboardScreen(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "Limit: $currencySymbol${String.format(Locale.US, "%,.0f", overallBudgetStatus.budget.amountLimit)}",
+                                        text = "Limit: $currencySymbol${AmountFormatter.format(overallBudgetStatus.budget.amountLimit)}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

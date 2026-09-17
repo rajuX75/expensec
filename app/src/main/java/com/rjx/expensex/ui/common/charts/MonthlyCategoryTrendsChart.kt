@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.common.charts
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -416,7 +417,7 @@ fun MonthlyCategoryTrendsChart(
                                 }
 
                                 Text(
-                                    text = "$currencySymbol${String.format("%,.2f", activeMonth.totalExpense)}",
+                                    text = "$currencySymbol${AmountFormatter.format(activeMonth.totalExpense)}",
                                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -460,7 +461,7 @@ fun MonthlyCategoryTrendsChart(
                                                 modifier = Modifier.padding(end = 12.dp)
                                             )
                                             Text(
-                                                text = "$currencySymbol${String.format("%,.2f", amount)}",
+                                                text = "$currencySymbol${AmountFormatter.format(amount)}",
                                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )

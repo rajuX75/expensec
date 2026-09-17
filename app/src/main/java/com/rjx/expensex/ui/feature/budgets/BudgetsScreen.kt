@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.budgets
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -197,7 +198,7 @@ fun BudgetsScreen(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "Limit: $currencySymbol${String.format(Locale.US, "%,.2f", overallBudgetStatus.budget.amountLimit)}",
+                                            text = "Limit: $currencySymbol${AmountFormatter.format(overallBudgetStatus.budget.amountLimit)}",
                                             style = MaterialTheme.typography.labelSmall.tabular(),
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -219,7 +220,7 @@ fun BudgetsScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "Spent: $currencySymbol${String.format(Locale.US, "%,.2f", overallBudgetStatus.spentAmount)}",
+                                    text = "Spent: $currencySymbol${AmountFormatter.format(overallBudgetStatus.spentAmount)}",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold).tabular(),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -349,7 +350,7 @@ fun BudgetsScreen(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = "$currencySymbol${String.format(Locale.US, "%,.0f", status.spentAmount)} of $currencySymbol${String.format(Locale.US, "%,.0f", status.budget.amountLimit)}",
+                                            text = "$currencySymbol${AmountFormatter.format(status.spentAmount)} of $currencySymbol${AmountFormatter.format(status.budget.amountLimit)}",
                                             style = MaterialTheme.typography.labelSmall.tabular(),
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )

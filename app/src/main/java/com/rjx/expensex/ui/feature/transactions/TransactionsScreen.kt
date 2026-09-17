@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.transactions
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -276,14 +277,14 @@ fun TransactionsScreen(
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     if (dailyIncome > 0) {
                                         Text(
-                                            text = "+$currencySymbol${String.format("%,.0f", dailyIncome)}",
+                                            text = "+$currencySymbol${AmountFormatter.format(dailyIncome)}",
                                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                             color = IncomeGreen
                                         )
                                     }
                                     if (dailyExpense > 0) {
                                         Text(
-                                            text = "-$currencySymbol${String.format("%,.0f", dailyExpense)}",
+                                            text = "-$currencySymbol${AmountFormatter.format(dailyExpense)}",
                                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                             color = ExpenseRed
                                         )
@@ -360,7 +361,7 @@ fun TransactionsScreen(
 
                 // Amount
                 Text(
-                    text = "${if (isIncome) "+" else if (isTransfer) "" else "-"}$currencySymbol${String.format("%,.2f", tx.amount)}",
+                    text = "${if (isIncome) "+" else if (isTransfer) "" else "-"}$currencySymbol${AmountFormatter.format(tx.amount)}",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                     color = when {
                         isIncome -> IncomeGreen

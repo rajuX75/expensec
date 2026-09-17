@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.accounts
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -238,7 +239,7 @@ fun AccountsAndBillsScreen(
 
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
-                                        text = "$currencySymbol${String.format(Locale.US, "%,.2f", item.liveBalance)}",
+                                        text = "$currencySymbol${AmountFormatter.format(item.liveBalance)}",
                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                                         color = if (item.liveBalance >= 0) MaterialTheme.colorScheme.onSurface else financialColors.expense
                                     )
@@ -378,7 +379,7 @@ fun AccountsAndBillsScreen(
 
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(
-                                            text = "$currencySymbol${String.format(Locale.US, "%,.2f", bill.amount)}",
+                                            text = "$currencySymbol${AmountFormatter.format(bill.amount)}",
                                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold).tabular(),
                                             color = MaterialTheme.colorScheme.onSurface
                                         )

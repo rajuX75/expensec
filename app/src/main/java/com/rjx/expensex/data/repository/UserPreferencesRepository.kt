@@ -2,6 +2,7 @@ package com.rjx.expensex.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.rjx.expensex.core.util.AmountFormatter
 import com.rjx.expensex.data.model.UserSettingsBackup
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -177,6 +178,11 @@ class UserPreferencesRepository(context: Context) {
         safeInt("decimal_places", 2)
     )
     val decimalPlaces: StateFlow<Int> = _decimalPlaces.asStateFlow()
+
+    init {
+        // Keep the global amount formatter in sync with the stored preference.
+        AmountFormatter.decimalPlaces = _decimalPlaces.value
+    }
 
     private val _weekStartDay = MutableStateFlow(
         safeString("week_start_day", "MONDAY")
@@ -359,6 +365,7 @@ class UserPreferencesRepository(context: Context) {
     fun setDecimalPlaces(places: Int) {
         prefs.edit().putInt("decimal_places", places).apply()
         _decimalPlaces.value = places
+        AmountFormatter.decimalPlaces = places
     }
 
     fun setWeekStartDay(day: String) {
@@ -516,6 +523,7 @@ class UserPreferencesRepository(context: Context) {
             _currencySymbol.value = safeString("selected_currency_symbol", "$")
             _themeMode.value = safeString("theme_mode", "SYSTEM")
             _decimalPlaces.value = safeInt("decimal_places", 2)
+            AmountFormatter.decimalPlaces = _decimalPlaces.value
             _weekStartDay.value = safeString("week_start_day", "MONDAY")
             _dateFormat.value = safeString("date_format", "MMM dd, yyyy")
             _autoCategorize.value = safeBoolean("auto_categorize", true)

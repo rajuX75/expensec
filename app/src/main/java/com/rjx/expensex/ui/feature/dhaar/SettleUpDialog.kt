@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.dhaar
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,7 +44,7 @@ fun SettleUpDialog(
     val outstandingAbs = abs(currentNetBalance)
 
     var amountText by remember {
-        mutableStateOf(String.format(Locale.US, "%.2f", outstandingAbs))
+        mutableStateOf(AmountFormatter.format(outstandingAbs))
     }
     var note by remember {
         mutableStateOf(if (isTheyOweYou) "Received settlement from ${contact.name}" else "Settled debt to ${contact.name}")
@@ -144,7 +145,7 @@ fun SettleUpDialog(
                                 color = if (isTheyOweYou) IncomeGreen else if (isYouOweThem) ExpenseRed else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "$currencySymbol${String.format("%,.2f", outstandingAbs)}",
+                                text = "$currencySymbol${AmountFormatter.format(outstandingAbs)}",
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                 color = if (isTheyOweYou) IncomeGreen else if (isYouOweThem) ExpenseRed else MaterialTheme.colorScheme.onSurface
                             )
@@ -189,22 +190,22 @@ fun SettleUpDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FilledTonalButton(
-                            onClick = { amountText = String.format(Locale.US, "%.2f", outstandingAbs) },
+                            onClick = { amountText = AmountFormatter.format(outstandingAbs) },
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             modifier = Modifier.height(32.dp)
                         ) {
-                            Text("Full (${String.format("%.2f", outstandingAbs)})", style = MaterialTheme.typography.labelSmall)
+                            Text("Full (${AmountFormatter.format(outstandingAbs)})", style = MaterialTheme.typography.labelSmall)
                         }
 
                         if (outstandingAbs > 1.0) {
                             OutlinedButton(
-                                onClick = { amountText = String.format(Locale.US, "%.2f", outstandingAbs / 2.0) },
+                                onClick = { amountText = AmountFormatter.format(outstandingAbs / 2.0) },
                                 shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                                 modifier = Modifier.height(32.dp)
                             ) {
-                                Text("Half (${String.format("%.2f", outstandingAbs / 2.0)})", style = MaterialTheme.typography.labelSmall)
+                                Text("Half (${AmountFormatter.format(outstandingAbs / 2.0)})", style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
@@ -229,7 +230,7 @@ fun SettleUpDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Warning: Settling $currencySymbol${String.format("%.2f", overpayAmount)} more than outstanding debt. Excess will create a reverse balance.",
+                                text = "Warning: Settling $currencySymbol${AmountFormatter.format(overpayAmount)} more than outstanding debt. Excess will create a reverse balance.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
@@ -248,7 +249,7 @@ fun SettleUpDialog(
                         ) {
                             Text("Remaining Balance:", style = MaterialTheme.typography.labelSmall)
                             Text(
-                                text = "$currencySymbol${String.format("%,.2f", abs(projectedBalance))}",
+                                text = "$currencySymbol${AmountFormatter.format(abs(projectedBalance))}",
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }

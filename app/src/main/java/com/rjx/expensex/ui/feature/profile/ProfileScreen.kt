@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.profile
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -330,7 +331,7 @@ fun ProfileScreen(
                                 }
                             }
                             Text(
-                                text = "$currencySymbol${"%.2f".format(financialSummary.totalBalance)}",
+                                text = "$currencySymbol${AmountFormatter.format(financialSummary.totalBalance)}",
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = if (financialSummary.totalBalance >= 0) Color(0xFF10B981) else Color(0xFFEF4444)
@@ -362,7 +363,7 @@ fun ProfileScreen(
                                 }
                             }
                             Text(
-                                text = "$currencySymbol${"%.2f".format(financialSummary.thisMonthIncome)}",
+                                text = "$currencySymbol${AmountFormatter.format(financialSummary.thisMonthIncome)}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
                             )
                         }
@@ -391,7 +392,7 @@ fun ProfileScreen(
                                 }
                             }
                             Text(
-                                text = "$currencySymbol${"%.2f".format(financialSummary.thisMonthExpense)}",
+                                text = "$currencySymbol${AmountFormatter.format(financialSummary.thisMonthExpense)}",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Color(0xFFEF4444))
                             )
                         }

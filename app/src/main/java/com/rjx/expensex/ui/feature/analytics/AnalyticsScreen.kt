@@ -1,5 +1,6 @@
 package com.rjx.expensex.ui.feature.analytics
 
+import com.rjx.expensex.core.util.AmountFormatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -122,7 +123,7 @@ fun AnalyticsScreen(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "$currencySymbol${String.format("%,.0f", totalPeriodSpent)}",
+                            text = "$currencySymbol${AmountFormatter.format(totalPeriodSpent)}",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -150,7 +151,7 @@ fun AnalyticsScreen(
                         val savings = summary.netSavings
                         val sign = if (savings < 0) "-" else ""
                         Text(
-                            text = "$sign$currencySymbol${String.format("%,.0f", kotlin.math.abs(savings))}",
+                            text = "$sign$currencySymbol${AmountFormatter.format(kotlin.math.abs(savings))}",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = if (savings >= 0) IncomeGreen else ExpenseRed
                         )
@@ -176,7 +177,7 @@ fun AnalyticsScreen(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "$currencySymbol${String.format("%,.0f", totalBaki)}",
+                            text = "$currencySymbol${AmountFormatter.format(totalBaki)}",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -266,7 +267,7 @@ fun AnalyticsScreen(
                                     }
 
                                     Text(
-                                        text = "$currencySymbol${String.format("%,.2f", m.amount)}",
+                                        text = "$currencySymbol${AmountFormatter.format(m.amount)}",
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
